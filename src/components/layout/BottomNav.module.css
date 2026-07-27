@@ -1,0 +1,97 @@
+.bottomNav {
+  height: var(--bottomnav-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--color-surface);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.item, .active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-round);
+  color: #9A9384;
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.active {
+  color: var(--color-primary);
+}
+
+.fabWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-round);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-fab);
+  transform: translateY(-12px);
+  z-index: 2;
+}
+
+.fab:active {
+  transform: translateY(-12px) scale(0.97);
+}
+
+.bubble {
+  position: absolute;
+  height: 44px;
+  border-radius: var(--radius-round);
+  border: none;
+  color: var(--color-text-inverse);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0 var(--space-md) 0 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  z-index: 2;
+  bottom: 64px;
+  white-space: nowrap;
+}
+
+.bubbleLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.bubbleLeft {
+  background: var(--color-accent);
+  right: 56px;
+  bottom: 92px;
+}
+
+.bubbleRight {
+  background: var(--color-primary);
+  right: -40px;
+  bottom: 92px;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}

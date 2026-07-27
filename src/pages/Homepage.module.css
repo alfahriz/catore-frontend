@@ -1,0 +1,274 @@
+.page {
+  padding: var(--space-md) var(--page-padding-x) var(--space-2xl);
+}
+
+.banner {
+  padding: 13px 14px;
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.bannerMissed {
+  background: oklch(90% 0.03 30 / 0.55);
+}
+
+.bannerTitle {
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  color: #4A2222;
+}
+
+.bannerSubtitle {
+  font-size: var(--font-size-sm);
+  color: #4A2222;
+  margin-top: 2px;
+}
+
+.fixButton {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: var(--space-sm) 14px;
+  border-radius: var(--radius-xl);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.streakWarning {
+  padding: 12px 14px;
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--space-sm);
+}
+
+.streakWarningText {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.ringWrapper {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 6px;
+}
+
+.ring {
+  width: 200px;
+  height: 200px;
+  border-radius: var(--radius-round);
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: inset -6px -6px 12px rgba(255, 255, 255, 0.85), inset 6px 6px 14px rgba(180, 160, 120, 0.4);
+}
+
+.ringSvg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+.ringLabels {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.ringConsumed {
+  font-size: var(--font-size-display);
+  font-weight: 900;
+  color: var(--color-text-primary);
+}
+
+.ringLimit {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.ringRemaining {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  margin-top: var(--space-xs);
+}
+
+.categoryRow {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-md);
+}
+
+.categoryButton {
+  border: 1px solid oklch(55% 0.09 190 / 0.18);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 9px 16px;
+  border-radius: 20px;
+  background: color-mix(in oklch, oklch(55% 0.09 190) 10%, var(--color-surface));
+  box-shadow: var(--shadow-card);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.cardRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.card {
+  flex: 1;
+  padding: 14px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.cardLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.cardValue {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.paToggle {
+  border: none;
+  cursor: pointer;
+  width: 46px;
+  height: 26px;
+  border-radius: 14px;
+  position: relative;
+  margin-top: 2px;
+  transition: background var(--duration-normal);
+}
+
+.paKnob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-round);
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform var(--duration-normal);
+}
+
+.sectionHeader {
+  margin-top: var(--space-lg);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.linkButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  color: var(--color-primary);
+  padding: 0;
+}
+
+.weekRow {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.weekDay {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.weekDayLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.weekDayCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-round);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.loggedList {
+  margin-top: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.loggedRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.loggedName {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 14.5px;
+  color: var(--color-text-primary);
+}
+
+.loggedKcal {
+  flex-shrink: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  width: 56px;
+  text-align: right;
+}
+
+.loggedTime {
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  width: 62px;
+  text-align: right;
+}
