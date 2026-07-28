@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
 import { AuthLayout } from '../components/layout/AuthLayout';
 import { Homepage } from '../pages/Homepage';
+import { BackfillDetail } from '../pages/BackfillDetail';
 import { MonthlyReview } from '../pages/MonthlyReview';
 import { Log } from '../pages/Log';
 import { ProgressProjection } from '../pages/ProgressProjection';
@@ -37,4 +38,5 @@ export const router = createBrowserRouter([
       { path: '/profile', element: <Profile /> },
     ],
   },
+  { path: '/backfill', element: <BackfillDetail /> },
 ]);

@@ -1,0 +1,300 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-surface);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 0 12px;
+}
+
+.backButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-primary);
+}
+
+.title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.body {
+  flex: 1;
+  overflow: auto;
+  padding: 14px var(--page-padding-x) var(--space-sm);
+}
+
+.mealTabs {
+  display: flex;
+  gap: 6px;
+}
+
+.mealTab {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 10px 4px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.dateTimeRow {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.draftSection {
+  margin-top: var(--space-md);
+}
+
+.sectionLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.draftCard {
+  margin-top: var(--space-sm);
+  position: relative;
+  padding: 12px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.draftRow {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.draftNameInput {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 12px 13px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-input);
+  box-shadow: var(--shadow-input-inset);
+}
+
+.draftKcalInput {
+  width: 76px;
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 12px 10px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-input);
+  box-shadow: var(--shadow-input-inset);
+  text-align: center;
+}
+
+.autocomplete {
+  position: absolute;
+  top: 64px;
+  left: 12px;
+  right: 96px;
+  max-height: 180px;
+  overflow: auto;
+  background: var(--color-bg);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  z-index: 5;
+}
+
+.autocompleteItem {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 11px 14px;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid rgba(93, 84, 71, 0.1);
+}
+
+.addItemButton {
+  margin-top: 10px;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.itemsSection {
+  margin-top: var(--space-md);
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.itemName {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 14.5px;
+  color: var(--color-text-primary);
+}
+
+.itemKcal {
+  font-size: 14.5px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.itemAction {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: var(--space-xs);
+  display: flex;
+  color: var(--color-text-secondary);
+}
+
+.quickAddSection {
+  margin-top: var(--space-md);
+}
+
+.quickAddChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.chip {
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 9px 14px;
+  border-radius: 20px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: 14px var(--page-padding-x) 20px;
+}
+
+.saveButton {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 15px;
+  border-radius: var(--radius-xl);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.discardOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(60, 45, 25, 0.28);
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 30px;
+}
+
+.discardCard {
+  width: 100%;
+  background: var(--color-bg);
+  border-radius: var(--radius-xl);
+  padding: 22px;
+  box-shadow: -4px -4px 8px rgba(255, 255, 255, 0.25), 4px 4px 10px rgba(180, 160, 120, 0.32);
+}
+
+.discardTitle {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.discardBody {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: var(--space-sm) 0 var(--space-md);
+}
+
+.discardActions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.discardButton {
+  flex: 1;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  background: var(--color-warning);
+  color: var(--color-text-inverse);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.keepEditingButton {
+  flex: 1;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-input);
+  color: var(--color-text-primary);
+  font-size: 13.5px;
+  font-weight: 700;
+}

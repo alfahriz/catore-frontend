@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DAY_STATE_STYLES, dayStateBoxShadow } from '../lib/dayState';
 import {
   DUMMY_ACTIVE_CATEGORY_LABEL,
@@ -16,6 +17,7 @@ const RING_RADIUS = 82;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export function Homepage() {
+  const navigate = useNavigate();
   const [paOn, setPaOn] = useState(false);
   const [categoryLabel, setCategoryLabel] = useState(DUMMY_ACTIVE_CATEGORY_LABEL);
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
@@ -24,10 +26,12 @@ export function Homepage() {
   const limit = activeCategory.kcal + (paOn ? 200 : 0);
   const remaining = limit - DUMMY_CONSUMED;
   const overLimit = remaining < 0;
-  const percent = Math.min(DUMMY_CONSUMED / limit, 1);
+  const rawPercent = DUMMY_CONSUMED / limit;
+  const percent = Math.min(rawPercent, 1);
 
-  const ringColor = overLimit ? 'var(--color-warning)' : 'var(--color-primary)';
-  const remainingColor = overLimit ? 'var(--color-warning)' : 'var(--color-success)';
+  // 3 case: normal (<80%) / mendekati limit (80-99%) / over (>=100%)
+  const ringColor = overLimit ? 'var(--color-warning)' : rawPercent >= 0.8 ? 'var(--color-caution)' : 'var(--color-primary)';
+  const remainingColor = overLimit ? 'var(--color-warning)' : rawPercent >= 0.8 ? 'var(--color-caution)' : 'var(--color-success)';
   const remainingLabel = overLimit
     ? `${Math.abs(remaining).toLocaleString('en-US')} kcal over`
     : `${remaining.toLocaleString('en-US')} kcal left`;
@@ -40,7 +44,7 @@ export function Homepage() {
             <div className={styles.bannerTitle}>{DUMMY_MISSED_BANNER.title}</div>
             <div className={styles.bannerSubtitle}>{DUMMY_MISSED_BANNER.subtitle}</div>
           </div>
-          <button className={styles.fixButton}>Fix</button>
+          <button className={styles.fixButton} onClick={() => navigate('/backfill')}>Fix</button>
         </div>
       )}
 

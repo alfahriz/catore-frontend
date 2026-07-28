@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { Flame, Shield, Snowflake, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DUMMY_STREAK } from '../../lib/dummyData';
 import styles from './StreakModal.module.css';
@@ -24,7 +24,7 @@ export function StreakModal({ open, onClose }: StreakModalProps) {
         </button>
 
         <div className={styles.streakHeader}>
-          <span className={styles.flameBg}>🔥</span>
+          <Flame className={styles.flameBg} size={110} strokeWidth={1.5} color="var(--color-warning)" />
           <span className={styles.streakBig} style={{ color: streakBigColor }}>{streak.count}</span>
           <span className={styles.streakCaption}>{streakCaption}</span>
         </div>
@@ -33,14 +33,14 @@ export function StreakModal({ open, onClose }: StreakModalProps) {
 
         <div className={styles.tokenRow}>
           <div className={styles.tokenCard} style={{ background: 'oklch(93% 0.02 220 / 0.55)' }}>
-            <span className={styles.tokenEmoji}>❄️</span>
-            <span className={styles.tokenLabel}>Streak Freeze</span>
+            <Snowflake className={styles.tokenIcon} size={52} strokeWidth={1.5} color="oklch(42% 0.09 235)" />
+            <span className={styles.tokenLabel}>Streak<br />Freeze</span>
             <span className={styles.tokenValue} style={{ color: 'oklch(42% 0.09 235)' }}>
               {streak.streakFreezeAvailable}/{streak.streakFreezeMax}
             </span>
           </div>
           <div className={styles.tokenCard} style={{ background: 'oklch(55% 0.09 255 / 0.1)' }}>
-            <span className={styles.tokenEmoji}>🛡️</span>
+            <Shield className={styles.tokenIcon} size={52} strokeWidth={1.5} color="oklch(45% 0.1 255)" />
             <span className={styles.tokenLabel}>Wipe<br />Freeze</span>
             <span className={styles.tokenValue} style={{ color: 'oklch(45% 0.1 255)' }}>
               {streak.wipeFreezeAvailable}/{streak.wipeFreezeMax}

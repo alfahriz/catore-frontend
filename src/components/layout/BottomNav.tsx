@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, Calendar, Plus, BarChart2, TrendingUp, UtensilsCrossed, Scale, X } from 'lucide-react';
+import { LogWeightModal } from '../weight/LogWeightModal';
+import { AddConsumptionModal } from '../consumption/AddConsumptionModal';
 import styles from './BottomNav.module.css';
 
 export function BottomNav() {
   const [fanOpen, setFanOpen] = useState(false);
+  const [logWeightOpen, setLogWeightOpen] = useState(false);
+  const [addConsumptionOpen, setAddConsumptionOpen] = useState(false);
 
   return (
     <nav className={styles.bottomNav}>
@@ -20,13 +24,25 @@ export function BottomNav() {
       <div className={styles.fabWrapper}>
         {fanOpen && (
           <>
-            <button className={`${styles.bubble} ${styles.bubbleLeft}`} aria-label="Add Consumption">
+            <button
+              className={`${styles.bubble} ${styles.bubbleLeft}`}
+              aria-label="Add Consumption"
+              onClick={() => {
+                setFanOpen(false);
+                setAddConsumptionOpen(true);
+              }}
+            >
               <UtensilsCrossed size={20} strokeWidth={2} />
-              <span className={styles.bubbleLabel}>Add Consumption</span>
             </button>
-            <button className={`${styles.bubble} ${styles.bubbleRight}`} aria-label="Log Weight">
+            <button
+              className={`${styles.bubble} ${styles.bubbleRight}`}
+              aria-label="Log Weight"
+              onClick={() => {
+                setFanOpen(false);
+                setLogWeightOpen(true);
+              }}
+            >
               <Scale size={20} strokeWidth={2} />
-              <span className={styles.bubbleLabel}>Log Weight</span>
             </button>
           </>
         )}
@@ -41,6 +57,18 @@ export function BottomNav() {
       <NavLink to="/progress" className={({ isActive }) => (isActive ? styles.active : styles.item)} aria-label="Progress Projection">
         <TrendingUp size={20} strokeWidth={2} />
       </NavLink>
+
+      <LogWeightModal
+        open={logWeightOpen}
+        onClose={() => setLogWeightOpen(false)}
+        onSave={() => setLogWeightOpen(false)}
+      />
+
+      <AddConsumptionModal
+        open={addConsumptionOpen}
+        onClose={() => setAddConsumptionOpen(false)}
+        onSave={() => setAddConsumptionOpen(false)}
+      />
     </nav>
   );
 }

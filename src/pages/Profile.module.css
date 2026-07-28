@@ -1,0 +1,407 @@
+.page {
+  padding: 8px var(--page-padding-x) var(--space-2xl);
+}
+
+.identityCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-round);
+  background: oklch(93% 0.02 220 / 0.5);
+  box-shadow: 0 0 0 5px oklch(55% 0.09 190 / 0.14), var(--shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.nicknameInput {
+  text-align: center;
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-round);
+  background: none;
+  width: 180px;
+  box-sizing: border-box;
+}
+
+.metricsCard {
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.sectionEyebrow {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.fieldRow {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+}
+
+.fieldLabel {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.fieldInput {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 13px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-input);
+  box-shadow: var(--shadow-input-inset);
+}
+
+.genderButton {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 13px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-input);
+  box-shadow: var(--shadow-input-inset);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.genderMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 6;
+  overflow: hidden;
+}
+
+.genderOption {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 11px 13px;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.twoColRow {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.smallCard {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.smallCardRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.smallCardLabel {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.smallCardValue {
+  font-size: 12px;
+  color: var(--color-text-primary);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.iconButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metricToggle {
+  border: none;
+  cursor: pointer;
+  width: 40px;
+  height: 24px;
+  border-radius: 12px;
+  position: relative;
+  transition: background var(--duration-normal);
+  flex-shrink: 0;
+}
+
+.metricKnob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-round);
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform var(--duration-normal);
+}
+
+.activityGoalRow {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  align-items: stretch;
+}
+
+.activityCard {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: var(--radius-xl);
+  background: oklch(55% 0.09 255 / 0.08);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.activityValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-top: 3px;
+}
+
+.retakeButton {
+  align-self: flex-start;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.goalCard {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.goalInputRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.goalInput {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.goalHint {
+  font-size: 9.5px;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-top: 5px;
+  line-height: 1.3;
+}
+
+.goalError {
+  font-size: 10.5px;
+  color: var(--color-warning);
+  font-weight: 600;
+  display: block;
+  margin-top: 5px;
+}
+
+.numbersSection {
+  margin-top: var(--space-md);
+}
+
+.numbersList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.numberCard {
+  padding: 18px 20px;
+  border-radius: var(--radius-xl);
+  border: 1.5px solid var(--color-border);
+  box-shadow: -6px -6px 12px rgba(255, 255, 255, 0.95), 6px 6px 14px rgba(180, 160, 120, 0.4);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  background: var(--color-surface);
+}
+
+.numberLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.numberSub {
+  font-size: 10.5px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.numberValue {
+  font-size: var(--font-size-display);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.numberUnit {
+  font-size: var(--font-size-h3);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.limitsSection {
+  margin-top: 22px;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.limitsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.limitCard {
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.limitLabel {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.limitValue {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin-top: 3px;
+}
+
+.changePasswordButton {
+  margin-top: 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  color: var(--color-primary);
+  padding: 4px 0;
+}
+
+.saveButton {
+  margin-top: var(--space-md);
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 15px;
+  border-radius: var(--radius-xl);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.logoutButton {
+  margin-top: var(--space-sm);
+  width: 100%;
+  border: 1.5px solid var(--color-warning);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 14px;
+  border-radius: var(--radius-xl);
+  background: none;
+  color: oklch(50% 0.18 30);
+  font-size: 14.5px;
+  font-weight: 700;
+}
