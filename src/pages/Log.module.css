@@ -1,0 +1,108 @@
+.page {
+  padding: var(--space-md) var(--page-padding-x) var(--space-2xl);
+}
+
+.tabBar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-input);
+  box-shadow: var(--shadow-input-inset);
+}
+
+.tabButton {
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  padding: 8px 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.tabButtonActive {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-md);
+}
+
+.navButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--color-text-primary);
+  padding: 6px;
+}
+
+.periodButton {
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.periodTitle {
+  font-size: var(--font-size-h3);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.pickerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 26, 20, 0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+
+.pickerSheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--color-bg);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--space-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.pickerTitle {
+  font-size: var(--font-size-h3);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-sm);
+  text-align: center;
+}
+
+.pickerItem {
+  width: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+  cursor: pointer;
+}
+
+.pickerItemActive {
+  color: var(--color-primary);
+  font-weight: 700;
+}

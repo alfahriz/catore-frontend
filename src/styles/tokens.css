@@ -23,14 +23,17 @@
   --color-accent-light: oklch(72% 0.10 190);
   --color-accent-dark: oklch(42% 0.15 190);
 
-  /* Semantic (6-state) */
+  /* Semantic (6-state) — base hue tiap state, dipakai bareng di kalender (Homepage/Monthly Review)
+     dan chart Log (Week/Month/Year). Aplikasi visual (solid fill vs pastel fill vs outline)
+     tetap kontekstual per komponen — cuma HUE dasarnya yang diseragamkan di sini. */
   --color-success: oklch(58% 0.16 145);
   --color-caution: oklch(75% 0.16 85);
   --color-warning: oklch(60% 0.18 30);
-  --color-missed: oklch(90% 0.03 30);
-  --color-upcoming: oklch(92% 0.005 255);
+  --color-missed: oklch(70% 0.13 30);
+  --color-missed-solid: oklch(55% 0.16 25);
+  --color-upcoming: oklch(75% 0.01 255);
   --color-today: oklch(58% 0.15 255);
-  --color-frozen: oklch(93% 0.02 220);
+  --color-frozen: oklch(70% 0.08 235);
 
   /* Border / divider */
   --color-border: rgba(180, 160, 120, 0.28);
