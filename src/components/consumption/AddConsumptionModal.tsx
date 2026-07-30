@@ -3,7 +3,20 @@ import { ArrowLeft, Pencil, X } from 'lucide-react';
 import { DUMMY_FOOD_HISTORY, DUMMY_QUICK_ADD, MEAL_TYPES, type MealType } from '../../lib/dummyData';
 import { DatePickerField } from '../pickers/DatePickerField';
 import { TimePickerField } from '../pickers/TimePickerField';
+import { SubmitConfirmModal } from './SubmitConfirmModal';
 import styles from './AddConsumptionModal.module.css';
+
+function formatDateLabel(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatTimeLabel(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
 
 interface SavedItem {
   name: string;
@@ -35,6 +48,7 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showDiscard, setShowDiscard] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const suggestions = useMemo(() => {
     const query = draftName.trim().toLowerCase();
@@ -53,6 +67,7 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
     setSavedItems([]);
     setEditingIndex(null);
     setShowDiscard(false);
+    setShowSubmitConfirm(false);
   };
 
   // Sync tanggal & waktu tiap kali modal dibuka — bukan cuma di mount pertama,
@@ -117,8 +132,14 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
       ? `Submit (${savedItems.length} item${savedItems.length > 1 ? 's' : ''} · ${totalKcal.toLocaleString('en-US')} kcal)`
       : 'Submit';
 
-  const handleSave = () => {
+  // Submit gak langsung nyimpen — buka ringkasan konfirmasi dulu (meal type/tanggal/waktu di-highlight),
+  // karena salah pencet tab meal (mis. niatnya Breakfast kepencet Lunch) gak kelihatan sampai user cek log lagi.
+  const handleSubmitClick = () => {
     if (savedItems.length === 0) return;
+    setShowSubmitConfirm(true);
+  };
+
+  const handleConfirmSave = () => {
     onSave(savedItems);
     resetState();
   };
@@ -139,11 +160,7 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
           {MEAL_TYPES.map((meal) => (
             <button
               key={meal}
-              className={styles.mealTab}
-              style={{
-                boxShadow: meal === mealType ? 'var(--shadow-input-inset)' : 'var(--shadow-card)',
-                color: meal === mealType ? 'var(--color-primary)' : 'var(--color-text-primary)',
-              }}
+              className={`${styles.mealTab} ${meal === mealType ? styles.mealTabActive : ''}`}
               onClick={() => setMealType(meal)}
             >
               {meal}
@@ -202,7 +219,7 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
         </div>
 
         <div className={styles.quickAddSection}>
-          <span className={styles.sectionLabel}>Recent items — everything you ate yesterday</span>
+          <span className={styles.sectionLabel}>What you ate yesterday</span>
           <div className={styles.quickAddChips}>
             {DUMMY_QUICK_ADD.map((chip) => (
               <button key={chip.name} className={styles.chip} onClick={() => handleQuickAdd(chip)}>
@@ -242,12 +259,23 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
         <button
           className={styles.saveButton}
           style={{ opacity: savedItems.length === 0 ? 0.5 : 1 }}
-          onClick={handleSave}
+          onClick={handleSubmitClick}
           disabled={savedItems.length === 0}
         >
           {saveLabel}
         </button>
       </div>
+
+      <SubmitConfirmModal
+        open={showSubmitConfirm}
+        mealType={mealType}
+        dateLabel={formatDateLabel(date)}
+        timeLabel={formatTimeLabel(time)}
+        items={savedItems}
+        totalKcal={totalKcal}
+        onConfirm={handleConfirmSave}
+        onCancel={() => setShowSubmitConfirm(false)}
+      />
 
       {showDiscard && (
         <div className={styles.discardOverlay} onClick={() => setShowDiscard(false)}>

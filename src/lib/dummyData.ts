@@ -288,8 +288,9 @@ export function getDummyDayDetail(state: DayState): DayDetailDummy {
 
 // --- Log (Brief 9) ---
 
-// "Hari ini" acuan demo = Sat, Jul 6 2026 (offset 0), konsisten dgn DUMMY_TODAY_LABEL/DUMMY_BACKFILL_CARDS.
-const LOG_TODAY = new Date(2026, 6, 6);
+// "Hari ini" acuan demo = Thu, Jul 23 2026 (offset 0) — sengaja jatuh di W4 Juli biar demo Month tab
+// nunjukkin W4=current, W5=upcoming.
+const LOG_TODAY = new Date(2026, 6, 23);
 
 interface TimedEntry {
   name: string;
@@ -447,17 +448,25 @@ export function getDummyWeekLog(weekOffset: number): WeekLogDummy {
   // Nomor minggu dalam bulan (W1 = minggu berisi tanggal 1-7, dst) berdasar tanggal mulai minggu (Senin).
   const weekNumberInMonth = Math.ceil(weekStart.getDate() / 7);
   const monthName = weekStart.toLocaleDateString('en-US', { month: 'long' });
-  // Minggu lintas-bulan/tahun: tampilkan nama bulan (dan tahun kalau beda) akhir juga di sisi kanan,
-  // mis. "29 Jun-5 Jul" atau "29 Dec 2026-4 Jan 2027", biar gak ambigu.
-  const crossesMonth = weekStart.getMonth() !== weekEnd.getMonth();
+  // Format seragam apa pun kondisinya (sama bulan/lintas bulan/lintas tahun): "29 June - 5 July",
+  // nama bulan penuh selalu ditulis kedua sisi biar desain konsisten, tahun akhir ikut ditulis kalau beda.
   const crossesYear = weekStart.getFullYear() !== weekEnd.getFullYear();
-  const dateRange = crossesMonth
-    ? `${weekStart.getDate()} ${monthName.slice(0, 3)}-${weekEnd.getDate()} ${weekEnd.toLocaleDateString('en-US', { month: 'short' })}${crossesYear ? ` ${weekEnd.getFullYear()}` : ''}`
-    : `${weekStart.getDate()}-${weekEnd.getDate()}`;
+  const endMonthName = weekEnd.toLocaleDateString('en-US', { month: 'long' });
+  const dateRange = `${weekStart.getDate()} ${monthName} - ${weekEnd.getDate()} ${endMonthName}${crossesYear ? ` ${weekEnd.getFullYear()}` : ''}`;
   const title = `W${weekNumberInMonth} ${monthName} ${weekStart.getFullYear()} (${dateRange})`;
 
+  // Index hari ini dalam minggu (0=Senin..6=Minggu), dihitung dari LOG_TODAY beneran — bukan hardcode
+  // index-5 (Sabtu). Hari sebelum today = logged/frozen/missed (sudah lewat), today = 'today', sesudah = upcoming.
+  const todayIndex = (LOG_TODAY.getDay() + 6) % 7;
   const states: DayState[] = isCurrent
-    ? ['logged', 'logged', 'frozen', 'missed', 'missed', 'today', 'upcoming']
+    ? DUMMY_WEEK.map((_, i) => {
+        if (i === todayIndex) return 'today';
+        if (i > todayIndex) return 'upcoming';
+        const mod = i % 3;
+        if (mod === 0) return 'logged';
+        if (mod === 1) return 'frozen';
+        return 'missed';
+      })
     : DUMMY_WEEK.map((_, i) => {
         const mod = (i + seed) % 6;
         if (mod === 0) return 'over';
@@ -488,7 +497,8 @@ export function getDummyWeekLog(weekOffset: number): WeekLogDummy {
     const hasIntake = state === 'logged' || state === 'over';
     const base = state === 'over' ? dayLimit + 150 + ((seed + i) % 4) * 80 : dayLimit - 200 - ((seed + i) % 5) * 60;
     const intake = hasIntake ? Math.round(base * portionMultiplier) : null;
-    return { label: dayLabels[i], dayOffset, intake, displayValue: intake ?? PLACEHOLDER_BAR_HEIGHT, limit: dayLimit, state };
+    const label = `${dayLabels[i]} (${dayDate.getDate()})`;
+    return { label, dayOffset, intake, displayValue: intake ?? PLACEHOLDER_BAR_HEIGHT, limit: dayLimit, state };
   });
 
   // Sum & avg intake selalu dibagi 7 (bukan cuma hari yang logged) — hari yang belum diisi (null)
@@ -530,11 +540,24 @@ export function getDummyWeekLog(weekOffset: number): WeekLogDummy {
   };
 }
 
+// 6 tipe minggu (Month tab), urut prioritas evaluasi (paling atas menang kalau kondisi tumpang tindih):
+// 6 upcoming (belum kejalani) > 5 current (lagi berjalan) > 3 incomplete-open (ada hari kosong TANPA freeze,
+// paling urgent krn user harus segera isi) > 4 incomplete-frozen (ada hari kosong tapi freeze, gak urgent)
+// > 2 over (semua 7 hari terisi, total over limit) > 1 logged (semua 7 hari terisi, total under limit).
+// Prioritas ini brarti minggu yang "over" tapi juga ada hari kosong-tanpa-freeze tetap masuk 3, BUKAN 2 —
+// kelengkapan data selalu didahulukan sebelum performa (over/under).
+export type MonthWeekState = 'logged' | 'over' | 'incomplete-open' | 'incomplete-frozen' | 'current' | 'upcoming';
+
 export interface MonthBarDummy {
   label: string;
+  weekOffset: number;
   intake: number | null;
+  displayValue: number;
   limit: number;
-  state: 'over' | 'logged' | 'current' | 'upcoming';
+  daysFilled: number; // dari 7 — dipakai kolom "Logged" tabel & badge hari kosong
+  state: MonthWeekState;
+  weight: number | null; // null kalau upcoming (belum ada weigh-in)
+  weightDelta: number | null; // vs minggu weighable SEBELUMNYA (lintas-bulan) — null kalau gak ada pembanding
 }
 
 export interface MonthLogDummy {
@@ -549,42 +572,120 @@ export interface MonthLogDummy {
   weightTrend: { label: string; weight: number }[];
   startWeight: number;
   currentWeight: number;
-  rows: { week: string; intake: string; deficit: string; deficitIsOver: boolean; logged: string }[];
+  rows: { week: string; weekOffset: number; intake: string; limit: string; deficit: string; deficitIsOver: boolean; logged: string; state: MonthWeekState }[];
+}
+
+// Berat badan minggu manapun (relatif LOG_TODAY, weekOffset=0 = minggu ini) — deterministik & KONTINU
+// lintas-bulan, bukan reset per-bulan. Trennya turun ~0.3kg/minggu makin ke masa lalu (weekOffset makin
+// negatif = weekOffset lebih lampau = berat lebih tinggi), + noise kecil deterministik biar gak garis lurus
+// sempurna. Dipakai getDummyMonthLog supaya W1 bulan manapun punya delta valid vs minggu terakhir bulan
+// SEBELUMNYA (dihitung dari weekOffset yang sama, bukan array index lokal per-bulan).
+function weightAtWeekOffset(weekOffset: number): number {
+  const BASE_WEIGHT = 77.8; // berat di weekOffset=0 (minggu ini)
+  const TREND_PER_WEEK = 0.3; // makin ke masa lalu, makin berat (proses turun berat berjalan maju)
+  const noise = Math.sin(weekOffset * 1.7) * 0.25; // variasi kecil deterministik, gak monotonic sempurna
+  return Math.round((BASE_WEIGHT - weekOffset * TREND_PER_WEEK + noise) * 10) / 10;
 }
 
 export function getDummyMonthLog(monthOffset: number): MonthLogDummy {
   const limit = DUMMY_ACTIVE_LIMIT;
+
+  // Senin minggu "hari ini" — acuan sama seperti getDummyWeekLog, dipakai buat hitung weekOffset
+  // presisi tiap minggu dalam bulan ini (bukan cuma label "W1"/"W2" tanpa arti drill-down).
+  const thisMonday = new Date(LOG_TODAY);
+  thisMonday.setDate(thisMonday.getDate() - ((thisMonday.getDay() + 6) % 7));
+
+  const targetMonthDate = new Date(2026, 6 + monthOffset, 1);
+  const targetYear = targetMonthDate.getFullYear();
+  const targetMonth = targetMonthDate.getMonth();
+  const monthName = targetMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+
+  // Senin dari minggu yang berisi tanggal 1 bulan ini — titik awal iterasi minggu.
+  const firstOfMonth = new Date(targetYear, targetMonth, 1);
+  const firstWeekMonday = new Date(firstOfMonth);
+  firstWeekMonday.setDate(firstWeekMonday.getDate() - ((firstWeekMonday.getDay() + 6) % 7));
+
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
   const seed = Math.abs(monthOffset);
-  const isCurrent = monthOffset === 0;
-  const weekCount = 4 + (seed % 2);
+  const isCurrentMonth = monthOffset === 0;
 
-  const bars: MonthBarDummy[] = Array.from({ length: weekCount }, (_, i) => {
-    const isFuture = isCurrent && i >= weekCount - 1;
-    const isCur = isCurrent && i === weekCount - 2;
-    const state: MonthBarDummy['state'] = isFuture ? 'upcoming' : isCur ? 'current' : (i + seed) % 4 === 0 ? 'over' : 'logged';
-    const intake = state === 'upcoming' ? null : state === 'over' ? limit * 7 + 900 + i * 200 : limit * 7 - 1200 - i * 150;
-    return { label: `W${i + 1}`, intake, limit: limit * 7, state };
-  });
+  // Demo eksplisit buat bulan berjalan (Juli 2026, 5 minggu — LOG_TODAY jatuh di W4 jadi W1-W3 lampau,
+  // W4 current, W5 upcoming otomatis dari weekOffset) — tunjukkin sisa kategori minggu (skip 'logged' murni
+  // per permintaan user, biar variasi kelihatan kaya):
+  // W1=over (semua terisi, over limit), W2=incomplete-open (ada hari kosong tanpa freeze, urgent),
+  // W3=incomplete-frozen (ada hari kosong tapi freeze).
+  const CURRENT_MONTH_DEMO_STATES: MonthWeekState[] = ['over', 'incomplete-open', 'incomplete-frozen'];
 
-  const startWeight = 79 + seed * 0.5;
-  const currentWeight = startWeight - (1.2 + seed * 0.3);
-  const weightTrend = bars.map((b, i) => ({
-    label: b.label,
-    weight: Math.round((startWeight - (i / (weekCount - 1)) * (startWeight - currentWeight)) * 10) / 10,
-  }));
+  const lastOfMonth = new Date(targetYear, targetMonth, daysInMonth);
+  const bars: MonthBarDummy[] = [];
+  let weekMonday = new Date(firstWeekMonday);
+  let i = 0;
+  // Iterasi tiap minggu (Senin start) yang overlap bulan ini — minggu terakhir dipakai selama Senin-nya
+  // masih ≤ tanggal terakhir bulan (minggu itu tetap "milik" bulan ini walau ekor minggunya nyambung ke bulan depan).
+  while (weekMonday.getTime() <= lastOfMonth.getTime()) {
+    const weekOffset = Math.round((weekMonday.getTime() - thisMonday.getTime()) / (MS_PER_DAY * 7));
+    const isFuture = weekOffset > 0;
+    const isCur = weekOffset === 0;
+
+    let state: MonthWeekState;
+    if (isFuture) state = 'upcoming';
+    else if (isCur) state = 'current';
+    else if (isCurrentMonth && i < CURRENT_MONTH_DEMO_STATES.length) state = CURRENT_MONTH_DEMO_STATES[i];
+    else {
+      // Bulan lain (navigasi mundur): variasi seeded, cover ketiga kategori minggu lampau non-demo.
+      const mod = (i + seed) % 5;
+      state = mod === 0 ? 'incomplete-open' : mod === 1 ? 'incomplete-frozen' : mod === 2 ? 'over' : 'logged';
+    }
+
+    const weekLimit = limit * 7 + ((seed + i * 3) % 4) * 100; // limit per-minggu bisa beda, bukan flat
+    const isIncomplete = state === 'incomplete-open' || state === 'incomplete-frozen';
+    // incomplete-open maks 1 hari kosong: aturan wipe (PRD 5.1) bilang 1 hari missed tanpa backfill dlm 48 jam
+    // langsung memicu wipe total, jadi "hari kosong tanpa freeze" realistanya cuma bisa nyangkut di grace window
+    // sempit (H-1, blm expired) — gak akan pernah numpuk 2-3 hari kayak draf awal. incomplete-frozen bisa 1-2 hari
+    // (ketutup Streak Freeze per-hari, stok token kecil jadi wajar cuma dikit).
+    const daysFilled = state === 'upcoming' ? 0 : state === 'incomplete-open' ? 6 : state === 'incomplete-frozen' ? 6 - (i % 2) : state === 'current' ? 3 : 7;
+    const intake =
+      state === 'upcoming'
+        ? null
+        : state === 'over'
+          ? weekLimit + 900 + i * 200
+          : isIncomplete
+            ? Math.round((weekLimit / 7) * daysFilled * (state === 'incomplete-open' ? 0.9 : 1.1)) // parsial, proporsional hari terisi
+            : state === 'current'
+              ? Math.round((weekLimit / 7) * daysFilled)
+              : weekLimit - 1200 - i * 150;
+    // displayValue: placeholder tinggi kecil buat minggu upcoming (intake null) — Recharts gak render bar value null/0.
+    const displayValue = intake ?? Math.round(weekLimit * 0.05);
+    // Weight & delta dihitung dari weekOffset absolut (weightAtWeekOffset), bukan index lokal — delta selalu
+    // vs weekOffset-1 (minggu kalender sebelumnya), kontinu lintas-bulan. Upcoming = belum ada weigh-in (null).
+    const weight = state === 'upcoming' ? null : weightAtWeekOffset(weekOffset);
+    const weightDelta = weight === null ? null : Math.round((weight - weightAtWeekOffset(weekOffset - 1)) * 10) / 10;
+    bars.push({ label: `W${i + 1}`, weekOffset, intake, displayValue, limit: weekLimit, daysFilled, state, weight, weightDelta });
+    weekMonday = new Date(weekMonday);
+    weekMonday.setDate(weekMonday.getDate() + 7);
+    i += 1;
+    if (i > 6) break; // safety, gak akan pernah lebih dari 6 minggu overlap 1 bulan
+  }
+
+  // Weight trend cuma punya titik buat minggu yang udah kejalani (bukan upcoming) — minggu yang belum
+  // dimulai belum ada weigh-in beneran, jadi gak boleh diplot. Weight-nya reuse dari bar.weight yang udah
+  // dihitung dari weekOffset absolut, jadi kontinu lintas-bulan (delta W1 bulan manapun tetap valid).
+  const weighableBars = bars.filter((b) => b.weight !== null);
+  const weightTrend = weighableBars.map((b) => ({ label: b.label, weight: b.weight as number }));
+  const startWeight = weightTrend[0]?.weight ?? weightAtWeekOffset(0);
+  const currentWeight = weightTrend[weightTrend.length - 1]?.weight ?? weightAtWeekOffset(0);
 
   const loggedBars = bars.filter((b) => b.intake !== null);
   const sumIntake = loggedBars.reduce((s, b) => s + (b.intake ?? 0), 0);
   const avgIntakePerWeek = loggedBars.length ? Math.round(sumIntake / loggedBars.length) : 0;
-  const sumLimit = limit * 7 * weekCount;
-  const daysInMonth = weekCount * 7;
-  const daysLogged = loggedBars.length * 7 - (isCurrent ? 3 : 0);
-
-  const monthName = new Date(2026, 6 + monthOffset, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const sumLimit = bars.reduce((s, b) => s + b.limit, 0);
+  const avgLimitPerWeek = Math.round(sumLimit / bars.length);
+  const daysLogged = bars.reduce((s, b) => s + b.daysFilled, 0);
 
   return {
     title: monthName,
-    avgLimitPerWeek: limit * 7,
+    avgLimitPerWeek,
     sumLimit,
     avgIntakePerWeek,
     sumIntake,
@@ -594,14 +695,20 @@ export function getDummyMonthLog(monthOffset: number): MonthLogDummy {
     weightTrend,
     startWeight,
     currentWeight,
-    rows: loggedBars.map((b, i) => {
-      const deficit = b.limit - (b.intake ?? 0);
+    // Semua minggu tetap tampil (termasuk upcoming) — konsisten sama pola Week tab (7 hari selalu tampil).
+    rows: bars.map((b) => {
+      const actualIntake = b.intake ?? 0;
+      const deficit = b.limit - actualIntake;
+      const hasIntake = b.intake !== null;
       return {
         week: b.label,
-        intake: (b.intake ?? 0).toLocaleString('en-US'),
-        deficit: `${deficit >= 0 ? '+' : ''}${deficit.toLocaleString('en-US')}${i === 1 && isCurrent ? '*' : ''}`,
-        deficitIsOver: deficit < 0,
-        logged: '7/7',
+        weekOffset: b.weekOffset,
+        intake: actualIntake.toLocaleString('en-US'),
+        limit: b.limit.toLocaleString('en-US'),
+        deficit: hasIntake ? `${deficit >= 0 ? '+' : ''}${deficit.toLocaleString('en-US')}` : '–',
+        deficitIsOver: hasIntake && deficit < 0,
+        logged: `${b.daysFilled}/7`,
+        state: b.state,
       };
     }),
   };

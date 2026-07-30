@@ -57,8 +57,10 @@ export function Log() {
     setTab('day');
   }
 
-  function handleSelectWeek(week: string) {
-    setSummaryDetail({ title: week, rows: [{ label: 'Tap into Day tab', value: 'for full detail' }] });
+  // Drill-down Month → Week: pindah tab, simetris dgn drill-down Week→Day.
+  function handleSelectWeek(weekOffsetToOpen: number) {
+    setWeekOffset(weekOffsetToOpen);
+    setTab('week');
   }
 
   function handleSelectMonth(month: string) {
