@@ -3,7 +3,6 @@ import { DayTab } from '../components/log/DayTab';
 import { WeekTab } from '../components/log/WeekTab';
 import { MonthTab } from '../components/log/MonthTab';
 import { YearTab } from '../components/log/YearTab';
-import { SummaryDetailModal, type SummaryDetailRow } from '../components/log/SummaryDetailModal';
 import { getDummyDayLog, getDummyWeekLog, getDummyMonthLog, getDummyYearLog } from '../lib/dummyData';
 import styles from './Log.module.css';
 
@@ -22,7 +21,6 @@ export function Log() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [yearOffset, setYearOffset] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [summaryDetail, setSummaryDetail] = useState<{ title: string; rows: SummaryDetailRow[] } | null>(null);
 
   const offset = tab === 'day' ? dayOffset : tab === 'week' ? weekOffset : tab === 'month' ? monthOffset : yearOffset;
   const isCurrent = offset === 0;
@@ -63,8 +61,10 @@ export function Log() {
     setTab('week');
   }
 
-  function handleSelectMonth(month: string) {
-    setSummaryDetail({ title: month, rows: [{ label: 'Tap into Week tab', value: 'for full detail' }] });
+  // Drill-down Year → Month: pindah tab, simetris dgn drill-down Month→Week & Week→Day.
+  function handleSelectMonth(monthOffsetToOpen: number) {
+    setMonthOffset(monthOffsetToOpen);
+    setTab('month');
   }
 
   return (
@@ -120,13 +120,6 @@ export function Log() {
           </div>
         </div>
       )}
-
-      <SummaryDetailModal
-        open={summaryDetail !== null}
-        title={summaryDetail?.title ?? ''}
-        rows={summaryDetail?.rows ?? []}
-        onClose={() => setSummaryDetail(null)}
-      />
     </div>
   );
 }

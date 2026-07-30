@@ -71,7 +71,7 @@ export function DayTab({ dayOffset }: DayTabProps) {
             {data.items.map((item, i) => (
               <div className={styles.loggedRow} key={i}>
                 <div className={styles.loggedName}>{item.name}</div>
-                <span className={styles.loggedKcal}>{item.kcal}</span>
+                <span className={styles.loggedKcal}>{item.kcal.toLocaleString('en-US')}</span>
                 <span className={styles.loggedTime}>{item.time}</span>
               </div>
             ))}

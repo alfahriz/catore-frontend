@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { UtensilsCrossed, Scale } from 'lucide-react';
 import { BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getDummyMonthLog } from '../../lib/dummyData';
+import { buildWeightTicks } from '../../lib/weightTicks';
 import { ChartLegend } from './ChartLegend';
 import styles from './LogTabs.module.css';
 
@@ -47,14 +48,13 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
   const rawPercent = data.sumIntake / data.sumLimit;
 
   // Y-axis Weight trend: buffer simetris tetap ±0.5kg dari titik ekstrem minggu ini (bukan dataMin-1/dataMax+1
-  // independen) — biar garis selalu "di tengah" area chart, gak nempel ke tepi atas/bawah. Tick yang muncul
-  // BUKAN grid angka bulat otomatis Recharts, tapi persis angka berat asli tiap minggu (+ 2 buffer di ujung)
-  // — biar user langsung baca berat presisi tiap titik dari sumbu, bukan interpolasi grid generik.
+  // independen) — biar garis selalu "di tengah" area chart, gak nempel ke tepi atas/bawah. Gap antar-label
+  // adaptif dari (max-min)/jumlahMinggu — lihat buildWeightTicks — bukan threshold fixed.
   const weightValues = data.weightTrend.map((w) => w.weight);
   const weightMin = Math.min(...weightValues);
   const weightMax = Math.max(...weightValues);
   const weightDomain: [number, number] = [weightMin - 0.5, weightMax + 0.5];
-  const weightTicks = [weightDomain[0], ...Array.from(new Set(weightValues)).sort((a, b) => a - b), weightDomain[1]];
+  const weightTicks = buildWeightTicks(weightValues, weightDomain, data.bars.length);
 
   // 3 case sama seperti Day tab ("Left of") & Week tab ("Avg Intake/Day"): normal (<80%) / caution (80-99%) / over (>=100%)
   const avgIntakeBg = overLimit
@@ -149,11 +149,12 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
           <>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={data.weightTrend} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <CartesianGrid strokeDasharray="4 4" stroke="rgba(180, 160, 120, 0.45)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} />
                 <YAxis
                   domain={weightDomain}
                   ticks={weightTicks}
+                  interval={0}
                   tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }}
                   axisLine={false}
                   tickLine={false}
@@ -162,7 +163,7 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
               </LineChart>
             </ResponsiveContainer>
             <div className={styles.chartCaption}>
-              {data.startWeight.toFixed(1)} kg → {data.currentWeight.toFixed(1)} kg
+              {data.startWeight.toFixed(2)} kg → {data.currentWeight.toFixed(2)} kg
             </div>
           </>
         )}
@@ -173,7 +174,7 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
           <div className={styles.sectionHeader}>Weekly Intake</div>
           <div className={styles.table}>
             <div className={styles.tableHeaderRow5}>
-              <span>Week</span><span>Progress</span><span>Intake</span><span>Limit</span><span>Δ</span>
+              <span>Week</span><span>Progress</span><span>Limit</span><span>Intake</span><span>Δ</span>
             </div>
             {data.rows.map((row) => {
               // Default (logged/over/current) gak dikasih background — delta udah cukup nunjukin over/under limit.
@@ -198,9 +199,9 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
                 >
                   <span className={styles.rowDay}>{row.week}</span>
                   <span>{row.logged}</span>
-                  <span>{row.intake}</span>
                   <span>{row.limit}</span>
-                  <span style={{ color: row.deficitIsOver ? 'var(--color-warning)' : 'var(--color-success)' }}>{row.deficit}</span>
+                  <span>{row.intake}</span>
+                  <span style={{ color: row.deficitIsOver ? 'var(--color-warning)' : 'var(--color-success)', fontWeight: 700 }}>{row.deficit}</span>
                 </button>
               );
             })}
@@ -226,9 +227,9 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
                 >
                   <span className={styles.rowDay}>{row.week}</span>
                   <span>{row.logged}</span>
-                  <span>{row.weight !== null ? `${row.weight.toFixed(1)} kg` : '–'}</span>
+                  <span>{row.weight !== null ? `${row.weight.toFixed(2)} kg` : '–'}</span>
                   <span style={{ color: row.delta === null ? 'var(--color-text-secondary)' : row.delta > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>
-                    {row.delta === null ? '–' : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(1)} kg`}
+                    {row.delta === null ? '–' : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)} kg`}
                   </span>
                 </button>
               );

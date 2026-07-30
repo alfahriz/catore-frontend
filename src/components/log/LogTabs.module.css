@@ -145,12 +145,12 @@
 
 .loggedHeaderIntake {
   min-width: 56px;
-  text-align: right;
+  text-align: center;
 }
 
 .loggedHeaderTime {
   min-width: 62px;
-  text-align: right;
+  text-align: center;
 }
 
 .loggedRow {
@@ -179,14 +179,14 @@
   color: var(--color-text-secondary);
   font-weight: 600;
   min-width: 56px;
-  text-align: right;
+  text-align: center;
 }
 
 .loggedTime {
   color: var(--color-text-secondary);
   font-size: 11px;
   min-width: 62px;
-  text-align: right;
+  text-align: center;
 }
 
 .frozenNotice {
@@ -212,6 +212,15 @@
   font-weight: 700;
   color: var(--color-text-secondary);
   padding: 0 2px;
+}
+
+.tableHeaderRow span:not(:first-child),
+.tableHeaderRow4 span:not(:first-child),
+.tableHeaderRow5 span:not(:first-child),
+.tableRowButton span:not(:first-child),
+.tableRowButton4 span:not(:first-child),
+.tableRowButton5 span:not(:first-child) {
+  text-align: center;
 }
 
 .tableRowButton {

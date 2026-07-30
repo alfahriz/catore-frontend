@@ -196,10 +196,10 @@ export function getDummyMonthData(monthOffset: number): MonthDataDummy {
       title: `${monthName} review`,
       subtitle: 'Week 1–5 · Goal 68 kg',
       weeklyRows: [
-        { label: 'W1', intake: '12,450', deficit: '+320', deficitIsOver: false, weight: '77.4 kg', delta: '-0.2 kg' },
-        { label: 'W2', intake: '13,100', deficit: '-150*', deficitIsOver: true, weight: '77.1 kg', delta: '-0.3 kg' },
-        { label: 'W3', intake: '12,800', deficit: '+180', deficitIsOver: false, weight: '76.8 kg', delta: '-0.3 kg' },
-        { label: 'W4', intake: '11,900', deficit: '+520', deficitIsOver: false, weight: '76.5 kg', delta: '-0.3 kg' },
+        { label: 'W1', intake: '12,450', deficit: '+320', deficitIsOver: false, weight: '77.40 kg', delta: '-0.20 kg' },
+        { label: 'W2', intake: '13,100', deficit: '-150*', deficitIsOver: true, weight: '77.10 kg', delta: '-0.30 kg' },
+        { label: 'W3', intake: '12,800', deficit: '+180', deficitIsOver: false, weight: '76.80 kg', delta: '-0.30 kg' },
+        { label: 'W4', intake: '11,900', deficit: '+520', deficitIsOver: false, weight: '76.50 kg', delta: '-0.30 kg' },
         { label: 'W5', intake: '—', deficit: '—', deficitIsOver: false, weight: '—', delta: '—' },
       ],
       change: { headline: '1.2 kg lost', direction: 'lost', subtext: '9.4 kg left toward goal (77.4 → 68 kg)' },
@@ -235,8 +235,8 @@ export function getDummyMonthData(monthOffset: number): MonthDataDummy {
       intake: intakeBase.toLocaleString('en-US'),
       deficit: `${deficit >= 0 ? '+' : ''}${deficit.toLocaleString('en-US')}${hasFrozenThisWeek ? '*' : ''}`,
       deficitIsOver: deficit < 0,
-      weight: `${weight.toFixed(1)} kg`,
-      delta: `${weightDelta.toFixed(1)} kg`,
+      weight: `${weight.toFixed(2)} kg`,
+      delta: `${weightDelta.toFixed(2)} kg`,
     };
   });
 
@@ -255,9 +255,9 @@ export function getDummyMonthData(monthOffset: number): MonthDataDummy {
     subtitle: `Week 1–${weekCount} · Goal 68 kg`,
     weeklyRows,
     change: {
-      headline: `${Math.abs(totalDelta).toFixed(1)} kg lost`,
+      headline: `${Math.abs(totalDelta).toFixed(2)} kg lost`,
       direction: 'lost',
-      subtext: `${(startWeight - 68).toFixed(1)} kg left toward goal (${startWeight.toFixed(1)} → 68 kg)`,
+      subtext: `${(startWeight - 68).toFixed(2)} kg left toward goal (${startWeight.toFixed(2)} → 68 kg)`,
     },
     leadingEmpty,
     cells,
@@ -281,7 +281,7 @@ export function getDummyDayDetail(state: DayState): DayDetailDummy {
     intake,
     limit,
     deficit: hasData ? limit - intake! : null,
-    weight: hasData ? '77.4 kg' : '—',
+    weight: hasData ? '77.40 kg' : '—',
     items: hasData ? DUMMY_LOGGED_ITEMS.slice(0, 2) : [],
   };
 }
@@ -524,7 +524,9 @@ export function getDummyWeekLog(weekOffset: number): WeekLogDummy {
     // ditampilkan sebagai 0, bukan di-skip, biar tabel selalu representasi minggu penuh.
     rows: bars.map((b) => {
       const actualIntake = b.intake ?? 0;
-      const delta = b.limit - actualIntake;
+      // Delta = |limit-intake| polos (bukan surplus/defisit bertanda) — over limit selalu merah, under/sama
+      // selalu hijau, angkanya cuma besaran selisih tanpa +/-.
+      const delta = Math.abs(b.limit - actualIntake);
       // Intake null/0 (belum ada data beneran) → delta gak relevan dihitung, tampilkan "-" bukan angka.
       const hasIntake = b.intake !== null && b.intake > 0;
       return {
@@ -532,8 +534,8 @@ export function getDummyWeekLog(weekOffset: number): WeekLogDummy {
         dayOffset: b.dayOffset,
         intake: actualIntake.toLocaleString('en-US'),
         limit: b.limit.toLocaleString('en-US'),
-        delta: hasIntake ? `${delta >= 0 ? '+' : ''}${delta.toLocaleString('en-US')}` : '–',
-        deltaIsOver: hasIntake && delta < 0,
+        delta: hasIntake ? delta.toLocaleString('en-US') : '–',
+        deltaIsOver: hasIntake && actualIntake > b.limit,
         state: b.state,
       };
     }),
@@ -584,7 +586,24 @@ function weightAtWeekOffset(weekOffset: number): number {
   const BASE_WEIGHT = 77.8; // berat di weekOffset=0 (minggu ini)
   const TREND_PER_WEEK = 0.3; // makin ke masa lalu, makin berat (proses turun berat berjalan maju)
   const noise = Math.sin(weekOffset * 1.7) * 0.25; // variasi kecil deterministik, gak monotonic sempurna
-  return Math.round((BASE_WEIGHT - weekOffset * TREND_PER_WEEK + noise) * 10) / 10;
+  return Math.round((BASE_WEIGHT - weekOffset * TREND_PER_WEEK + noise) * 100) / 100;
+}
+
+// Konversi index bulan absolut (year*12+month) ke weekOffset minggu TERAKHIR yang overlap bulan itu —
+// dipakai Year tab supaya weight per-bulan reuse weightAtWeekOffset (1 sumber kebenaran sama Month tab),
+// bukan formula weight terpisah. "Minggu terakhir bulan" = Senin terakhir yang tanggalnya masih ≤ akhir bulan.
+function monthOffsetToLastWeekOffset(monthAbsIndex: number): number {
+  const year = Math.floor(monthAbsIndex / 12);
+  const month = monthAbsIndex % 12;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const lastOfMonth = new Date(year, month, daysInMonth);
+  const lastMonday = new Date(lastOfMonth);
+  lastMonday.setDate(lastMonday.getDate() - ((lastMonday.getDay() + 6) % 7));
+
+  const thisMonday = new Date(LOG_TODAY);
+  thisMonday.setDate(thisMonday.getDate() - ((thisMonday.getDay() + 6) % 7));
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  return Math.round((lastMonday.getTime() - thisMonday.getTime()) / (MS_PER_DAY * 7));
 }
 
 export function getDummyMonthLog(monthOffset: number): MonthLogDummy {
@@ -660,7 +679,7 @@ export function getDummyMonthLog(monthOffset: number): MonthLogDummy {
     // Weight & delta dihitung dari weekOffset absolut (weightAtWeekOffset), bukan index lokal — delta selalu
     // vs weekOffset-1 (minggu kalender sebelumnya), kontinu lintas-bulan. Upcoming = belum ada weigh-in (null).
     const weight = state === 'upcoming' ? null : weightAtWeekOffset(weekOffset);
-    const weightDelta = weight === null ? null : Math.round((weight - weightAtWeekOffset(weekOffset - 1)) * 10) / 10;
+    const weightDelta = weight === null ? null : Math.round((weight - weightAtWeekOffset(weekOffset - 1)) * 100) / 100;
     bars.push({ label: `W${i + 1}`, weekOffset, intake, displayValue, limit: weekLimit, daysFilled, state, weight, weightDelta });
     weekMonday = new Date(weekMonday);
     weekMonday.setDate(weekMonday.getDate() + 7);
@@ -698,15 +717,17 @@ export function getDummyMonthLog(monthOffset: number): MonthLogDummy {
     // Semua minggu tetap tampil (termasuk upcoming) — konsisten sama pola Week tab (7 hari selalu tampil).
     rows: bars.map((b) => {
       const actualIntake = b.intake ?? 0;
-      const deficit = b.limit - actualIntake;
+      // Delta = |limit-intake| polos (bukan surplus/defisit bertanda) — over limit selalu merah, under/sama
+      // selalu hijau, angkanya cuma besaran selisih tanpa +/-.
+      const deficit = Math.abs(b.limit - actualIntake);
       const hasIntake = b.intake !== null;
       return {
         week: b.label,
         weekOffset: b.weekOffset,
         intake: actualIntake.toLocaleString('en-US'),
         limit: b.limit.toLocaleString('en-US'),
-        deficit: hasIntake ? `${deficit >= 0 ? '+' : ''}${deficit.toLocaleString('en-US')}` : '–',
-        deficitIsOver: hasIntake && deficit < 0,
+        deficit: hasIntake ? deficit.toLocaleString('en-US') : '–',
+        deficitIsOver: hasIntake && actualIntake > b.limit,
         logged: `${b.daysFilled}/7`,
         state: b.state,
       };
@@ -714,11 +735,23 @@ export function getDummyMonthLog(monthOffset: number): MonthLogDummy {
   };
 }
 
+// 6 kategori state bulan (Year tab) — sama prinsip prioritas Month tab, tapi "incomplete" di sini artinya
+// ada MINGGU (bukan hari) berstatus incomplete di dalam bulan itu (turunan hierarkis satu tingkat di atas):
+// upcoming > current > incomplete-open (ada minggu incomplete-open di bulan itu) > incomplete-frozen (ada
+// minggu incomplete-frozen, gak ada yang open) > over > logged.
+export type YearMonthState = 'logged' | 'over' | 'incomplete-open' | 'incomplete-frozen' | 'current' | 'upcoming';
+
 export interface YearBarDummy {
   label: string;
+  monthOffset: number; // bulan relatif LOG_TODAY punya bulan (0 = bulan ini), dipakai drill-down Year→Month presisi
   intake: number | null;
+  displayValue: number;
   limit: number;
-  state: 'over' | 'logged' | 'current' | 'upcoming';
+  daysFilled: number; // dari total hari di bulan itu
+  daysInMonth: number;
+  weight: number | null; // null kalau upcoming
+  weightDelta: number | null; // vs bulan SEBELUMNYA (lintas-tahun, kontinu)
+  state: YearMonthState;
 }
 
 export interface YearLogDummy {
@@ -733,7 +766,18 @@ export interface YearLogDummy {
   weightTrend: { label: string; weight: number }[];
   startWeight: number;
   currentWeight: number;
-  rows: { month: string; intake: string; deficit: string; deficitIsOver: boolean; logged: string }[];
+  rows: {
+    month: string;
+    monthOffset: number;
+    intake: string;
+    limit: string;
+    deficit: string;
+    deficitIsOver: boolean;
+    logged: string;
+    weight: number | null;
+    weightDelta: number | null;
+    state: YearMonthState;
+  }[];
 }
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -741,36 +785,78 @@ const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 export function getDummyYearLog(yearOffset: number): YearLogDummy {
   const limit = DUMMY_ACTIVE_LIMIT;
   const seed = Math.abs(yearOffset);
-  const isCurrent = yearOffset === 0;
-  const currentMonthIndex = 6; // Juli
+  const targetYear = 2026 + yearOffset;
+  const isCurrentYear = targetYear === LOG_TODAY.getFullYear();
+  const currentMonthAbsIndex = LOG_TODAY.getFullYear() * 12 + LOG_TODAY.getMonth(); // index bulan absolut, basis monthOffset
+
+  // Demo eksplisit tahun berjalan (LOG_TODAY di bulan Juli/index 6) — sisa kategori (skip 'logged' murni)
+  // biar variasi kelihatan kaya, sama pola Month tab.
+  const CURRENT_YEAR_DEMO_STATES: YearMonthState[] = ['over', 'incomplete-open', 'incomplete-frozen', 'over', 'incomplete-frozen'];
 
   const bars: YearBarDummy[] = MONTH_SHORT.map((label, i) => {
-    const isFuture = isCurrent && i > currentMonthIndex;
-    const isCur = isCurrent && i === currentMonthIndex;
-    const monthDays = new Date(2026 + yearOffset, i + 1, 0).getDate();
-    const monthLimit = limit * monthDays;
-    const state: YearBarDummy['state'] = isFuture ? 'upcoming' : isCur ? 'current' : (i + seed) % 5 === 0 ? 'over' : 'logged';
-    const intake = state === 'upcoming' ? null : state === 'over' ? monthLimit + 3000 + i * 400 : monthLimit - 5000 - i * 300;
-    return { label, intake, limit: monthLimit, state };
+    const monthAbsIndex = targetYear * 12 + i;
+    const monthOffset = monthAbsIndex - currentMonthAbsIndex;
+    const isFuture = monthOffset > 0;
+    const isCur = monthOffset === 0;
+    const daysInMonth = new Date(targetYear, i + 1, 0).getDate();
+    const monthLimit = limit * daysInMonth + ((seed + i * 3) % 4) * 300; // limit per-bulan bisa beda, bukan flat
+
+    let state: YearMonthState;
+    if (isFuture) state = 'upcoming';
+    else if (isCur) state = 'current';
+    else if (isCurrentYear && i < CURRENT_YEAR_DEMO_STATES.length) state = CURRENT_YEAR_DEMO_STATES[i];
+    else {
+      const mod = (i + seed) % 5;
+      state = mod === 0 ? 'incomplete-open' : mod === 1 ? 'incomplete-frozen' : mod === 2 ? 'over' : 'logged';
+    }
+
+    const isIncomplete = state === 'incomplete-open' || state === 'incomplete-frozen';
+    // daysFilled: bulan penuh (7/7 minggu setara) beda dari bulan yang ada minggu incomplete di dalamnya —
+    // representasi kasar proporsi hari terisi dari total hari bulan itu.
+    const daysFilled =
+      state === 'upcoming'
+        ? 0
+        : isIncomplete
+          ? Math.round(daysInMonth * 0.85)
+          : state === 'current'
+            ? Math.round((daysInMonth * (LOG_TODAY.getDate() / daysInMonth)))
+            : daysInMonth;
+    const intake =
+      state === 'upcoming'
+        ? null
+        : state === 'over'
+          ? monthLimit + 3000 + i * 400
+          : isIncomplete
+            ? Math.round((monthLimit / daysInMonth) * daysFilled * (state === 'incomplete-open' ? 0.9 : 1.1))
+            : state === 'current'
+              ? Math.round((monthLimit / daysInMonth) * daysFilled)
+              : monthLimit - 5000 - i * 300;
+    const displayValue = intake ?? Math.round(monthLimit * 0.05);
+
+    // Weight & delta: reuse weightAtWeekOffset (1 sumber kebenaran lintas Month & Year tab) — dihitung dari
+    // weekOffset minggu TERAKHIR bulan itu (Senin terakhir yg overlap bulan ini), delta vs bulan sebelumnya.
+    const monthWeekOffset = monthOffsetToLastWeekOffset(monthAbsIndex);
+    const prevMonthWeekOffset = monthOffsetToLastWeekOffset(monthAbsIndex - 1);
+    const weight = state === 'upcoming' ? null : weightAtWeekOffset(monthWeekOffset);
+    const weightDelta = weight === null ? null : Math.round((weight - weightAtWeekOffset(prevMonthWeekOffset)) * 100) / 100;
+
+    return { label, monthOffset, intake, displayValue, limit: monthLimit, daysFilled, daysInMonth, weight, weightDelta, state };
   });
 
-  const startWeight = 82 + seed * 0.8;
-  const currentWeight = startWeight - (5.4 + seed * 0.6);
-  const loggedCount = bars.filter((b) => b.intake !== null).length;
-  const weightTrend = bars.slice(0, loggedCount || 1).map((b, i) => ({
-    label: b.label,
-    weight: Math.round((startWeight - (i / Math.max(loggedCount - 1, 1)) * (startWeight - currentWeight)) * 10) / 10,
-  }));
+  const weighableBars = bars.filter((b) => b.weight !== null);
+  const weightTrend = weighableBars.map((b) => ({ label: b.label, weight: b.weight as number }));
+  const startWeight = weightTrend[0]?.weight ?? weightAtWeekOffset(0);
+  const currentWeight = weightTrend[weightTrend.length - 1]?.weight ?? weightAtWeekOffset(0);
 
   const loggedBars = bars.filter((b) => b.intake !== null);
   const sumIntake = loggedBars.reduce((s, b) => s + (b.intake ?? 0), 0);
   const avgIntakePerMonth = loggedBars.length ? Math.round(sumIntake / loggedBars.length) : 0;
   const sumLimit = bars.reduce((s, b) => s + b.limit, 0);
-  const daysInYear = 365;
-  const daysLogged = loggedBars.length * 30 - (isCurrent ? 10 : 0);
+  const daysInYear = bars.reduce((s, b) => s + b.daysInMonth, 0);
+  const daysLogged = bars.reduce((s, b) => s + b.daysFilled, 0);
 
   return {
-    title: `${2026 + yearOffset}`,
+    title: `${targetYear}`,
     avgLimitPerMonth: Math.round(sumLimit / 12),
     sumLimit,
     avgIntakePerMonth,
@@ -781,14 +867,24 @@ export function getDummyYearLog(yearOffset: number): YearLogDummy {
     weightTrend,
     startWeight,
     currentWeight,
-    rows: loggedBars.map((b, i) => {
-      const deficit = b.limit - (b.intake ?? 0);
+    // Semua bulan tetap tampil (termasuk upcoming) — konsisten pola Week/Month tab.
+    rows: bars.map((b) => {
+      const actualIntake = b.intake ?? 0;
+      // Delta = |limit-intake| polos (bukan surplus/defisit bertanda) — over limit selalu merah, under/sama
+      // selalu hijau, angkanya cuma besaran selisih tanpa +/-.
+      const deficit = Math.abs(b.limit - actualIntake);
+      const hasIntake = b.intake !== null;
       return {
         month: b.label,
-        intake: (b.intake ?? 0).toLocaleString('en-US'),
-        deficit: `${deficit >= 0 ? '+' : ''}${deficit.toLocaleString('en-US')}${i === 2 && isCurrent ? '*' : ''}`,
-        deficitIsOver: deficit < 0,
-        logged: `${new Date(2026, i + 1, 0).getDate()}/${new Date(2026, i + 1, 0).getDate()}`,
+        monthOffset: b.monthOffset,
+        intake: actualIntake.toLocaleString('en-US'),
+        limit: b.limit.toLocaleString('en-US'),
+        deficit: hasIntake ? deficit.toLocaleString('en-US') : '–',
+        deficitIsOver: hasIntake && actualIntake > b.limit,
+        logged: `${b.daysFilled}/${b.daysInMonth}`,
+        weight: b.weight,
+        weightDelta: b.weightDelta,
+        state: b.state,
       };
     }),
   };

@@ -127,7 +127,7 @@ export function WeekTab({ weekOffset, onSelectDay }: WeekTabProps) {
               <span className={styles.rowDay}>{row.day}</span>
               <span>{row.limit}</span>
               <span>{row.intake}</span>
-              <span style={{ color: row.deltaIsOver ? 'var(--color-warning)' : 'var(--color-success)' }}>{row.delta}</span>
+              <span style={{ color: row.deltaIsOver ? 'var(--color-warning)' : 'var(--color-success)', fontWeight: 700 }}>{row.delta}</span>
             </button>
           );
         })}
