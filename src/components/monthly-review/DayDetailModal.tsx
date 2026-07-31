@@ -1,6 +1,7 @@
 import { Check, Snowflake, X } from 'lucide-react';
 import type { DayState } from '../../lib/dayState';
 import { getDummyDayDetail } from '../../lib/dummyData';
+import { useUnitStore, formatWeight } from '../../lib/unitStore';
 import styles from './DayDetailModal.module.css';
 
 interface DayDetailModalProps {
@@ -46,6 +47,7 @@ const STATUS_COLOR: Record<DayState, string> = {
 };
 
 export function DayDetailModal({ open, day, state, dateLabel, onClose }: DayDetailModalProps) {
+  const metricPreference = useUnitStore((s) => s.metricPreference);
   if (!open || day === null || state === null) return null;
 
   const detail = getDummyDayDetail(state);
@@ -83,7 +85,7 @@ export function DayDetailModal({ open, day, state, dateLabel, onClose }: DayDeta
           </div>
           <div className={styles.row}>
             <span className={styles.rowLabel}>Weight</span>
-            <span className={styles.rowValue}>{detail.weight}</span>
+            <span className={styles.rowValue}>{detail.weight !== null ? formatWeight(detail.weight, metricPreference) : '—'}</span>
           </div>
         </div>
 

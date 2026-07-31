@@ -131,8 +131,6 @@ export const DUMMY_PROFILE = {
   hasActivityAssessment: true,
   activityLevel: 'Moderately active',
   goalWeightKg: 68,
-  suggestedGoalKg: 66.5,
-  suggestedGoalBmi: 21.7,
   bmi: 25.3,
   bmiCategory: 'Overweight',
   tdee: 2416,
@@ -157,8 +155,8 @@ export interface WeeklyRowDummy {
   intake: string; // "12,450" atau "—" kalau belum terjadi
   deficit: string; // "+320" / "-150*" (bertanda * kalau ada hari Frozen belum diisi)
   deficitIsOver: boolean;
-  weight: string; // carry-forward, "77.4 kg"
-  delta: string; // "-0.2 kg"
+  weight: number | null; // kg mentah, carry-forward — null kalau minggu belum terjadi. Format tampilan (termasuk convert kg/lb) di komponen.
+  delta: number | null; // kg mentah — null kalau minggu belum terjadi
 }
 
 export interface MonthCellDummy {
@@ -168,9 +166,12 @@ export interface MonthCellDummy {
 
 export interface MonthDataDummy {
   title: string;
-  subtitle: string;
+  weekRangeLabel: string; // "Week 1–5" (bagian non-weight dari subtitle lama, tetap string krn cuma nomor minggu)
+  goalWeightKg: number; // kg mentah — format tampilan (termasuk convert kg/lb) di komponen
   weeklyRows: WeeklyRowDummy[];
-  change: { headline: string; direction: 'lost' | 'gain' | 'none'; subtext: string };
+  // change: angka mentah kg, bukan string ber-unit — format tampilan di komponen (biar convert kg/lb).
+  // goalWeightKg dipakai dari field top-level MonthDataDummy, gak diduplikasi di sini.
+  change: { deltaKg: number; direction: 'lost' | 'gain' | 'none'; startWeightKg: number };
   leadingEmpty: number;
   cells: MonthCellDummy[];
 }
@@ -194,15 +195,16 @@ export function getDummyMonthData(monthOffset: number): MonthDataDummy {
   if (monthOffset === 0) {
     return {
       title: `${monthName} review`,
-      subtitle: 'Week 1–5 · Goal 68 kg',
+      weekRangeLabel: 'Week 1–5',
+      goalWeightKg: 68,
       weeklyRows: [
-        { label: 'W1', intake: '12,450', deficit: '+320', deficitIsOver: false, weight: '77.40 kg', delta: '-0.20 kg' },
-        { label: 'W2', intake: '13,100', deficit: '-150*', deficitIsOver: true, weight: '77.10 kg', delta: '-0.30 kg' },
-        { label: 'W3', intake: '12,800', deficit: '+180', deficitIsOver: false, weight: '76.80 kg', delta: '-0.30 kg' },
-        { label: 'W4', intake: '11,900', deficit: '+520', deficitIsOver: false, weight: '76.50 kg', delta: '-0.30 kg' },
-        { label: 'W5', intake: '—', deficit: '—', deficitIsOver: false, weight: '—', delta: '—' },
+        { label: 'W1', intake: '12,450', deficit: '+320', deficitIsOver: false, weight: 77.40, delta: -0.20 },
+        { label: 'W2', intake: '13,100', deficit: '-150*', deficitIsOver: true, weight: 77.10, delta: -0.30 },
+        { label: 'W3', intake: '12,800', deficit: '+180', deficitIsOver: false, weight: 76.80, delta: -0.30 },
+        { label: 'W4', intake: '11,900', deficit: '+520', deficitIsOver: false, weight: 76.50, delta: -0.30 },
+        { label: 'W5', intake: '—', deficit: '—', deficitIsOver: false, weight: null, delta: null },
       ],
-      change: { headline: '1.2 kg lost', direction: 'lost', subtext: '9.4 kg left toward goal (77.4 → 68 kg)' },
+      change: { deltaKg: -1.2, direction: 'lost', startWeightKg: 77.4 },
       leadingEmpty,
       cells: Array.from({ length: daysInMonth }, (_, i) => {
         const day = i + 1;
@@ -235,8 +237,8 @@ export function getDummyMonthData(monthOffset: number): MonthDataDummy {
       intake: intakeBase.toLocaleString('en-US'),
       deficit: `${deficit >= 0 ? '+' : ''}${deficit.toLocaleString('en-US')}${hasFrozenThisWeek ? '*' : ''}`,
       deficitIsOver: deficit < 0,
-      weight: `${weight.toFixed(2)} kg`,
-      delta: `${weightDelta.toFixed(2)} kg`,
+      weight: Math.round(weight * 100) / 100,
+      delta: Math.round(weightDelta * 100) / 100,
     };
   });
 
@@ -252,13 +254,10 @@ export function getDummyMonthData(monthOffset: number): MonthDataDummy {
 
   return {
     title: `${monthName} review`,
-    subtitle: `Week 1–${weekCount} · Goal 68 kg`,
+    weekRangeLabel: `Week 1–${weekCount}`,
+    goalWeightKg: 68,
     weeklyRows,
-    change: {
-      headline: `${Math.abs(totalDelta).toFixed(2)} kg lost`,
-      direction: 'lost',
-      subtext: `${(startWeight - 68).toFixed(2)} kg left toward goal (${startWeight.toFixed(2)} → 68 kg)`,
-    },
+    change: { deltaKg: totalDelta, direction: 'lost', startWeightKg: Math.round(startWeight * 100) / 100 },
     leadingEmpty,
     cells,
   };
@@ -268,7 +267,7 @@ export interface DayDetailDummy {
   intake: number | null;
   limit: number;
   deficit: number | null;
-  weight: string;
+  weight: number | null; // kg mentah — null kalau gak ada data (belum logged/frozen). Format tampilan di komponen.
   items: FoodHistoryDummy[];
 }
 
@@ -281,7 +280,7 @@ export function getDummyDayDetail(state: DayState): DayDetailDummy {
     intake,
     limit,
     deficit: hasData ? limit - intake! : null,
-    weight: hasData ? '77.40 kg' : '—',
+    weight: hasData ? 77.40 : null,
     items: hasData ? DUMMY_LOGGED_ITEMS.slice(0, 2) : [],
   };
 }

@@ -3,6 +3,7 @@ import { UtensilsCrossed, Scale } from 'lucide-react';
 import { BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getDummyYearLog } from '../../lib/dummyData';
 import { buildWeightTicks, pickLabelTicks } from '../../lib/weightTicks';
+import { useUnitStore, formatWeight, kgToUnit } from '../../lib/unitStore';
 import { ChartLegend } from './ChartLegend';
 import styles from './LogTabs.module.css';
 
@@ -44,12 +45,17 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
   const [chartMode, setChartMode] = useState<ChartMode>('calories');
   const overLimit = data.sumIntake > data.sumLimit;
   const rawPercent = data.sumIntake / data.sumLimit;
+  const metricPreference = useUnitStore((s) => s.metricPreference);
+
+  // Data internal SELALU kg — convert ke unit aktif di titik ini, sebelum dipakai chart/tick/tabel
+  // (sama pola Month tab).
+  const weightTrendConverted = data.weightTrend.map((w) => ({ ...w, weight: kgToUnit(w.weight, metricPreference) }));
 
   // Y-axis Weight trend: grid line ikut SEMUA titik bulan weighable (sama pola Month tab, 1:1 data),
   // tapi 12 bulan kalau semua dikasih TEKS angka numpuk padat — jadi cuma ~6 tick yang ditampilin
   // labelnya (pickLabelTicks, index dipilih merata TERMASUK awal & akhir), sisanya grid polos tanpa
   // angka. Grid TETAP lengkap 12, cuma teks yg dikurangin.
-  const weightValues = data.weightTrend.map((w) => w.weight);
+  const weightValues = weightTrendConverted.map((w) => w.weight);
   const weightTicks = buildWeightTicks(weightValues);
   const weightLabelTicks = pickLabelTicks(weightTicks, 6);
   const weightPad = weightTicks.length > 1 ? (weightTicks[weightTicks.length - 1] - weightTicks[0]) * 0.08 : 0.3;
@@ -67,8 +73,8 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
     month: bar.monthFull,
     monthOffset: bar.monthOffset,
     logged: `${bar.daysFilled}/${bar.daysInMonth}`,
-    weight: bar.weight,
-    delta: bar.weightDelta,
+    weight: bar.weight === null ? null : kgToUnit(bar.weight, metricPreference),
+    delta: bar.weightDelta === null ? null : kgToUnit(bar.weightDelta, metricPreference),
     state: bar.state,
   }));
 
@@ -143,7 +149,7 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
         ) : (
           <>
             <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data.weightTrend} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+              <LineChart data={weightTrendConverted} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="4 4" stroke="rgba(180, 160, 120, 0.1)" horizontalValues={weightTicks} />
                 <XAxis dataKey="label" padding={{ left: 10, right: 10 }} tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} axisLine={{ stroke: 'var(--color-border)', strokeWidth: 1.5 }} tickLine={false} />
                 <YAxis
@@ -159,7 +165,7 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
               </LineChart>
             </ResponsiveContainer>
             <div className={styles.chartCaption}>
-              {data.startWeight.toFixed(2)} kg → {data.currentWeight.toFixed(2)} kg
+              {formatWeight(data.startWeight, metricPreference)} → {formatWeight(data.currentWeight, metricPreference)}
             </div>
           </>
         )}

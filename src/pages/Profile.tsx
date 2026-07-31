@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { DUMMY_LIMIT_PREVIEW, DUMMY_PROFILE } from '../lib/dummyData';
+import { useUnitStore, formatWeightNumber } from '../lib/unitStore';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import styles from './Profile.module.css';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
+const LB_PER_KG = 2.20462;
+
+// PRD 4.1: floor final = MAX(floor praktis, floor BMI16). Floor praktis = idealWeight(BMI22) - 10kg
+// (batas wajar kebanyakan kasus). Floor BMI16 = backstop medis (severely underweight WHO), relevan
+// cuma di tinggi badan sangat pendek. Contoh PRD: tinggi 169cm -> floor praktis 70kg, BMI16 ~45.7kg
+// -> floor final 70kg (lapis praktis menang).
+function idealWeightBmi22(heightCm: number): number {
+  return 22 * Math.pow(heightCm / 100, 2);
+}
 
 function goalWeightFloor(heightCm: number): number {
-  // Formula sederhana: floor lebih ketat dari (height-100)*0.9 atau BMI 16.
-  const bmiFloor = 16 * Math.pow(heightCm / 100, 2);
-  return Math.round(bmiFloor * 10) / 10;
+  const practicalFloor = idealWeightBmi22(heightCm) - 10;
+  const bmi16Floor = 16 * Math.pow(heightCm / 100, 2);
+  return Math.round(Math.max(practicalFloor, bmi16Floor) * 10) / 10;
 }
 
 export function Profile() {
@@ -19,22 +29,57 @@ export function Profile() {
   const [genderMenuOpen, setGenderMenuOpen] = useState(false);
   const [age, setAge] = useState(String(DUMMY_PROFILE.age));
   const [height, setHeight] = useState(String(DUMMY_PROFILE.heightCm));
-  const [weight, setWeight] = useState(String(DUMMY_PROFILE.weightKg));
-  const [metricPreference, setMetricPreference] = useState(DUMMY_PROFILE.metricPreference);
-  const [goalWeight, setGoalWeight] = useState(String(DUMMY_PROFILE.goalWeightKg));
+  // Data internal SELALU kg (PRD 4.1) — weightKg/goalWeightKg disimpan sbg number murni, tampilan
+  // (termasuk saat sedang diedit di input) di-convert via formatWeightNumber sesuai metricPreference
+  // global. User ngetik dalam unit aktif, nilai di-convert balik ke kg sebelum disimpan ke state.
+  const [weightKg, setWeightKg] = useState(DUMMY_PROFILE.weightKg);
+  const [goalWeightKg, setGoalWeightKg] = useState(DUMMY_PROFILE.goalWeightKg);
+  const metricPreference = useUnitStore((s) => s.metricPreference);
+  const toggleMetricPreference = useUnitStore((s) => s.toggleMetricPreference);
+  // PRD 4.1: goal weight belum di-override manual = ikut auto-recalculate tiap height berubah (kayak
+  // TDEE/BMI). Dummy ini di-init `true` krn goalWeightKg (68) udah beda dari saran BMI22 murni thd
+  // heightCm awal (175cm -> ~67.4kg) — representasi user yg emang udah override sebelum sesi ini.
+  const [isGoalManual, setIsGoalManual] = useState(true);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [pendingChange, setPendingChange] = useState<{ field: 'gender' | 'age'; value: string } | null>(null);
 
-  const floor = goalWeightFloor(Number(height) || DUMMY_PROFILE.heightCm);
-  const currentWeightNum = Number(weight) || DUMMY_PROFILE.weightKg;
-  const goalWeightNum = Number(goalWeight);
+  const heightNum = Number(height) || DUMMY_PROFILE.heightCm;
+  const floor = goalWeightFloor(heightNum);
+  // goalError dihitung selalu dalam kg (data internal), gak peduli unit tampilan aktif.
   const goalError =
-    goalWeightNum >= currentWeightNum
+    goalWeightKg >= weightKg
       ? 'Goal weight must be lower than current weight'
-      : goalWeightNum < floor
-        ? `Goal weight cannot be below ${floor} kg (health safety floor)`
+      : goalWeightKg < floor
+        ? `Goal weight cannot be below ${formatWeightNumber(floor, metricPreference)} ${metricPreference} (health safety floor)`
         : null;
+
+  // Suggested goal = BMI 22 (titik tengah rentang sehat) dari height saat ini — ikut berubah live
+  // kalau height diedit, TAPI cuma di-apply ke goalWeightKg kalau belum pernah di-override manual.
+  const suggestedGoalKg = Math.round(idealWeightBmi22(heightNum) * 10) / 10;
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (!isGoalManual) setGoalWeightKg(suggestedGoalKg);
+  }, [suggestedGoalKg, isGoalManual]);
+
+  // Input weight/goal ditampilkan dalam unit aktif, tapi disimpan sbg kg — convert balik saat user ngetik.
+  const weightDisplay = formatWeightNumber(weightKg, metricPreference);
+  const goalWeightDisplay = formatWeightNumber(goalWeightKg, metricPreference);
+
+  const handleWeightChange = (value: string) => {
+    const num = Number(value);
+    if (!Number.isNaN(num)) setWeightKg(metricPreference === 'lb' ? num / LB_PER_KG : num);
+  };
+
+  const handleGoalWeightChange = (value: string) => {
+    const num = Number(value);
+    if (!Number.isNaN(num)) setGoalWeightKg(metricPreference === 'lb' ? num / LB_PER_KG : num);
+    setIsGoalManual(true);
+  };
 
   const handleGenderSelect = (option: string) => {
     setGenderMenuOpen(false);
@@ -101,7 +146,7 @@ export function Profile() {
           </label>
           <label className={styles.field}>
             <span className={styles.fieldLabel}>Weight ({metricPreference})</span>
-            <input className={styles.fieldInput} value={weight} onChange={(e) => setWeight(e.target.value)} />
+            <input className={styles.fieldInput} value={weightDisplay} onChange={(e) => handleWeightChange(e.target.value)} />
           </label>
         </div>
       </div>
@@ -132,7 +177,7 @@ export function Profile() {
             <button
               className={styles.metricToggle}
               style={{ background: metricPreference === 'lb' ? 'var(--color-accent)' : '#DCD5C4' }}
-              onClick={() => setMetricPreference((v) => (v === 'kg' ? 'lb' : 'kg'))}
+              onClick={toggleMetricPreference}
               aria-label="Toggle metric preference"
             >
               <div className={styles.metricKnob} style={{ transform: metricPreference === 'lb' ? 'translateX(16px)' : 'translateX(0)' }} />
@@ -153,15 +198,24 @@ export function Profile() {
             {DUMMY_PROFILE.hasActivityAssessment ? 'Retake assessment' : 'Take assessment'}
           </button>
         </div>
-        <div className={styles.goalCard} style={{ background: goalError ? 'oklch(60% 0.18 30 / 0.06)' : 'var(--color-surface)' }}>
+        <div
+          className={styles.goalCard}
+          style={{
+            background: goalError
+              ? 'oklch(60% 0.18 30 / 0.06)'
+              : isGoalManual
+                ? 'oklch(55% 0.09 190 / 0.08)'
+                : 'var(--color-surface)',
+          }}
+        >
           <span className={styles.smallCardLabel}>Goal weight ({metricPreference})</span>
           <div className={styles.goalInputRow}>
-            <input className={styles.goalInput} value={goalWeight} onChange={(e) => setGoalWeight(e.target.value)} />
+            <input className={styles.goalInput} value={goalWeightDisplay} onChange={(e) => handleGoalWeightChange(e.target.value)} />
           </div>
           {goalError ? (
             <span className={styles.goalError}>{goalError}</span>
           ) : (
-            <span className={styles.goalHint}>Suggested: {DUMMY_PROFILE.suggestedGoalKg} kg (BMI {DUMMY_PROFILE.suggestedGoalBmi})</span>
+            <span className={styles.goalHint}>Suggested: {formatWeightNumber(suggestedGoalKg, metricPreference)} {metricPreference} (BMI 22)</span>
           )}
         </div>
       </div>

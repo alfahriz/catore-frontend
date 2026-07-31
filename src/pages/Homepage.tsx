@@ -10,6 +10,7 @@ import {
   DUMMY_MISSED_BANNER,
   DUMMY_WEEK,
 } from '../lib/dummyData';
+import { useUnitStore, formatWeight } from '../lib/unitStore';
 import { CategorySheet } from '../components/homepage/CategorySheet';
 import styles from './Homepage.module.css';
 
@@ -18,6 +19,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export function Homepage() {
   const navigate = useNavigate();
+  const metricPreference = useUnitStore((s) => s.metricPreference);
   const [paOn, setPaOn] = useState(false);
   const [categoryLabel, setCategoryLabel] = useState(DUMMY_ACTIVE_CATEGORY_LABEL);
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
@@ -82,7 +84,7 @@ export function Homepage() {
       <div className={styles.cardRow}>
         <div className={styles.card}>
           <span className={styles.cardLabel}>Current weight</span>
-          <span className={styles.cardValue}>{DUMMY_CURRENT_WEIGHT} kg</span>
+          <span className={styles.cardValue}>{formatWeight(DUMMY_CURRENT_WEIGHT, metricPreference)}</span>
         </div>
         <div className={styles.card}>
           <span className={styles.cardLabel}>Exercise today</span>

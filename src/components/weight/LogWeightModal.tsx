@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Calendar, Minus, Plus } from 'lucide-react';
 import { DUMMY_CURRENT_WEIGHT, DUMMY_HAS_LOGGED_WEIGHT_TODAY, DUMMY_TODAY_LABEL } from '../../lib/dummyData';
+import { useUnitStore, formatWeightNumber } from '../../lib/unitStore';
 import styles from './LogWeightModal.module.css';
 
 interface LogWeightModalProps {
@@ -13,14 +14,28 @@ function round1Decimal(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+const LB_PER_KG = 2.20462;
+
 export function LogWeightModal({ open, onClose, onSave }: LogWeightModalProps) {
+  // weight (state) SELALU kg — onSave(weight) tetap kontrak kg ke pemanggil. Tampilan/stepper/input
+  // dikonversi ke unit aktif, step ±0.1 diterapkan di unit TAMPILAN (0.1kg atau 0.1lb, bukan dipaksa
+  // selalu 0.1kg lalu ke-render ganjil di lb).
   const [weight, setWeight] = useState(DUMMY_CURRENT_WEIGHT);
   const [rawInput, setRawInput] = useState<string | undefined>(undefined);
+  const metricPreference = useUnitStore((s) => s.metricPreference);
 
   if (!open) return null;
 
   const title = DUMMY_HAS_LOGGED_WEIGHT_TODAY ? "Update today's weight" : "Log today's weight";
-  const displayValue = rawInput !== undefined ? rawInput : weight.toFixed(2);
+  const displayValue = rawInput !== undefined ? rawInput : formatWeightNumber(weight, metricPreference);
+
+  const step = (delta: number) => {
+    setWeight((w) => {
+      const displayed = metricPreference === 'lb' ? w * LB_PER_KG : w;
+      const nextDisplayed = round1Decimal(displayed + delta);
+      return round1Decimal(metricPreference === 'lb' ? nextDisplayed / LB_PER_KG : nextDisplayed);
+    });
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRawInput(e.target.value.replace(/[^0-9.]/g, ''));
@@ -29,7 +44,7 @@ export function LogWeightModal({ open, onClose, onSave }: LogWeightModalProps) {
   const handleInputBlur = () => {
     const parsed = parseFloat(rawInput ?? '');
     if (!isNaN(parsed)) {
-      setWeight(round1Decimal(parsed));
+      setWeight(round1Decimal(metricPreference === 'lb' ? parsed / LB_PER_KG : parsed));
     }
     setRawInput(undefined);
   };
@@ -47,7 +62,7 @@ export function LogWeightModal({ open, onClose, onSave }: LogWeightModalProps) {
         <div className={styles.stepperRow}>
           <button
             className={styles.stepperButton}
-            onClick={() => setWeight((w) => round1Decimal(w - 0.1))}
+            onClick={() => step(-0.1)}
             aria-label="Decrease weight"
           >
             <Minus size={22} strokeWidth={2.4} />
@@ -60,11 +75,11 @@ export function LogWeightModal({ open, onClose, onSave }: LogWeightModalProps) {
               onBlur={handleInputBlur}
               inputMode="decimal"
             />
-            <span className={styles.unit}>kg</span>
+            <span className={styles.unit}>{metricPreference}</span>
           </div>
           <button
             className={styles.stepperButton}
-            onClick={() => setWeight((w) => round1Decimal(w + 0.1))}
+            onClick={() => step(0.1)}
             aria-label="Increase weight"
           >
             <Plus size={22} strokeWidth={2.4} />

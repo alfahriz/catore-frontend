@@ -3,6 +3,7 @@ import { UtensilsCrossed, Scale } from 'lucide-react';
 import { BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getDummyMonthLog } from '../../lib/dummyData';
 import { buildWeightTicks } from '../../lib/weightTicks';
+import { useUnitStore, formatWeight, kgToUnit } from '../../lib/unitStore';
 import { ChartLegend } from './ChartLegend';
 import styles from './LogTabs.module.css';
 
@@ -46,12 +47,18 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
   const [chartMode, setChartMode] = useState<ChartMode>('calories');
   const overLimit = data.sumIntake > data.sumLimit;
   const rawPercent = data.sumIntake / data.sumLimit;
+  const metricPreference = useUnitStore((s) => s.metricPreference);
+
+  // Data internal SELALU kg (dummyData/generator) — convert ke unit aktif di titik ini, SEBELUM
+  // dipakai chart/tick/tabel, biar semua turunan (weightTrend line, tick Y-axis, domain, tabel Weight)
+  // konsisten 1 unit, bukan campur kg-mentah + lb-tampilan di tempat berbeda.
+  const weightTrendConverted = data.weightTrend.map((w) => ({ ...w, weight: kgToUnit(w.weight, metricPreference) }));
 
   // Y-axis Weight trend: grid buatan rata N tick (N = jumlah minggu weighable) dari weightMin ke
   // weightMax — lihat buildWeightTicks. Domain dikasih padding visual kecil di luar tick pertama/
   // terakhir (biar titik data gak nempel ke tepi plot area) TANPA nambah tick/label baru — cuma
   // area render yang lebih lega, angka yang ditampilkan tetap persis array ticks.
-  const weightValues = data.weightTrend.map((w) => w.weight);
+  const weightValues = weightTrendConverted.map((w) => w.weight);
   const weightTicks = buildWeightTicks(weightValues);
   const weightPad = weightTicks.length > 1 ? (weightTicks[weightTicks.length - 1] - weightTicks[0]) * 0.08 : 0.3;
   const weightDomain: [number, number] = [weightTicks[0] - weightPad, weightTicks[weightTicks.length - 1] + weightPad];
@@ -68,12 +75,14 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
   // (row disabled, weight "–") biar user tau minggu itu emang belum kejalani, bukan baris yang hilang.
   // weight & weightDelta direuse langsung dari bar (dihitung generator berbasis weekOffset absolut, jadi
   // W1 tetap punya delta valid vs minggu terakhir bulan SEBELUMNYA — kontinu lintas-bulan, bukan reset).
+  // Delta di-convert TERPISAH dari weight (bukan selisih 2 weight yg udah dikonversi) — angka kg asli
+  // sudah presisi, convert-lalu-kurangi bisa geser presisi kecil vs convert-langsung-si-delta.
   const weightRows = data.bars.map((bar) => ({
     week: bar.label,
     weekOffset: bar.weekOffset,
     logged: `${bar.daysFilled}/7`,
-    weight: bar.weight,
-    delta: bar.weightDelta,
+    weight: bar.weight === null ? null : kgToUnit(bar.weight, metricPreference),
+    delta: bar.weightDelta === null ? null : kgToUnit(bar.weightDelta, metricPreference),
     state: bar.state,
   }));
 
@@ -148,8 +157,8 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
         ) : (
           <>
             <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data.weightTrend} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="4 4" stroke="rgba(180, 160, 120, 0.1)" horizontalValues={weightTicks} verticalValues={data.weightTrend.map((w) => w.label)} />
+              <LineChart data={weightTrendConverted} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="4 4" stroke="rgba(180, 160, 120, 0.1)" horizontalValues={weightTicks} verticalValues={weightTrendConverted.map((w) => w.label)} />
                 <XAxis dataKey="label" padding={{ left: 10, right: 10 }} tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} axisLine={{ stroke: 'var(--color-border)', strokeWidth: 1.5 }} tickLine={false} />
                 <YAxis
                   domain={weightDomain}
@@ -164,7 +173,7 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
               </LineChart>
             </ResponsiveContainer>
             <div className={styles.chartCaption}>
-              {data.startWeight.toFixed(2)} kg → {data.currentWeight.toFixed(2)} kg
+              {formatWeight(data.startWeight, metricPreference)} → {formatWeight(data.currentWeight, metricPreference)}
             </div>
           </>
         )}

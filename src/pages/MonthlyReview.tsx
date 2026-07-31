@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { DAY_STATE_STYLES, dayStateBoxShadow, type DayState } from '../lib/dayState';
 import { getDummyMonthData } from '../lib/dummyData';
+import { useUnitStore, formatWeight, formatWeightNumber } from '../lib/unitStore';
 import { DayDetailModal } from '../components/monthly-review/DayDetailModal';
 import styles from './MonthlyReview.module.css';
 
@@ -22,9 +23,17 @@ export function MonthlyReview() {
 
   const monthData = useMemo(() => getDummyMonthData(monthOffset), [monthOffset]);
   const hasFrozenFootnote = monthData.weeklyRows.some((r) => r.deficit.includes('*'));
+  const metricPreference = useUnitStore((s) => s.metricPreference);
 
   const changeColor =
     monthData.change.direction === 'lost' ? 'var(--color-success)' : monthData.change.direction === 'gain' ? 'var(--color-warning)' : 'var(--color-text-primary)';
+
+  const changeHeadline = `${formatWeightNumber(Math.abs(monthData.change.deltaKg), metricPreference)} ${metricPreference} ${monthData.change.direction === 'gain' ? 'gain' : monthData.change.direction === 'lost' ? 'lost' : ''}`.trim();
+  const changeSubtext =
+    monthData.change.direction === 'none'
+      ? 'No change this month'
+      : `${formatWeightNumber(monthData.change.startWeightKg - monthData.goalWeightKg, metricPreference)} ${metricPreference} left toward goal (${formatWeight(monthData.change.startWeightKg, metricPreference)} → ${formatWeight(monthData.goalWeightKg, metricPreference)})`;
+  const subtitle = `${monthData.weekRangeLabel} · Goal ${formatWeight(monthData.goalWeightKg, metricPreference)}`;
 
   const dayDateLabel = selectedDay
     ? new Date(2026, 6 + monthOffset, selectedDay.day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
@@ -36,7 +45,7 @@ export function MonthlyReview() {
         <button className={styles.navButton} onClick={() => setMonthOffset((o) => o - 1)} aria-label="Previous month">‹</button>
         <div className={styles.headerTitle}>
           <div className={styles.monthTitle}>{monthData.title}</div>
-          <div className={styles.monthSubtitle}>{monthData.subtitle}</div>
+          <div className={styles.monthSubtitle}>{subtitle}</div>
         </div>
         <button
           className={styles.navButton}
@@ -50,16 +59,16 @@ export function MonthlyReview() {
 
       <div className={styles.changeCard}>
         <div className={styles.changeHeadline} style={{ color: changeColor }}>
-          {monthData.change.headline}
+          {changeHeadline}
           {monthData.change.direction === 'lost' && <TrendingDown size={20} strokeWidth={2.2} style={{ verticalAlign: 'text-bottom', marginLeft: 4 }} />}
           {monthData.change.direction === 'gain' && <TrendingUp size={20} strokeWidth={2.2} style={{ verticalAlign: 'text-bottom', marginLeft: 4 }} />}
         </div>
-        <div className={styles.changeSubtext}>{monthData.change.subtext}</div>
+        <div className={styles.changeSubtext}>{changeSubtext}</div>
       </div>
 
       <div className={styles.tableSection}>
         <div className={styles.tableHeader}>
-          <span>Week</span><span>Intake</span><span>Deficit</span><span>Weight</span><span>Δ</span>
+          <span>Week</span><span>Intake</span><span>Deficit</span><span>Weight ({metricPreference})</span><span>Δ</span>
         </div>
         {monthData.weeklyRows.map((row) => (
           <div
@@ -72,8 +81,8 @@ export function MonthlyReview() {
             <span className={styles.deficitCell} style={{ color: row.deficitIsOver ? 'var(--color-warning)' : 'var(--color-success)' }}>
               {row.deficit}
             </span>
-            <span>{row.weight}</span>
-            <span>{row.delta}</span>
+            <span>{row.weight !== null ? formatWeightNumber(row.weight, metricPreference) : '—'}</span>
+            <span>{row.delta !== null ? `${row.delta > 0 ? '+' : ''}${formatWeightNumber(row.delta, metricPreference)}` : '—'}</span>
           </div>
         ))}
         {hasFrozenFootnote && <div className={styles.footnote}>* Includes a Frozen day not yet submitted</div>}
