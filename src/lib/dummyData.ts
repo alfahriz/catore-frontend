@@ -742,7 +742,8 @@ export function getDummyMonthLog(monthOffset: number): MonthLogDummy {
 export type YearMonthState = 'logged' | 'over' | 'incomplete-open' | 'incomplete-frozen' | 'current' | 'upcoming';
 
 export interface YearBarDummy {
-  label: string;
+  label: string; // inisial 1 huruf, dipakai chart (bar & X-axis line) — biar gak padat 12 bulan
+  monthFull: string; // 3 huruf ("Jan"), dipakai tabel Monthly Intake/Weight — lebih jelas dibaca
   monthOffset: number; // bulan relatif LOG_TODAY punya bulan (0 = bulan ini), dipakai drill-down Year→Month presisi
   intake: number | null;
   displayValue: number;
@@ -780,7 +781,15 @@ export interface YearLogDummy {
   }[];
 }
 
-const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Sumber kebenaran bulan cuma index 0-11 (Date month) — format tampilan (inisial 1 huruf utk chart,
+// 3 huruf utk tabel) dikonversi dari index yg sama via monthInitial()/monthAbbrev(), BUKAN 2 array
+// string terpisah yg bisa drift kalau salah satu diubah tanpa yg lain.
+function monthInitial(monthIndex: number): string {
+  return new Date(2000, monthIndex, 1).toLocaleDateString('en-US', { month: 'short' })[0];
+}
+function monthAbbrev(monthIndex: number): string {
+  return new Date(2000, monthIndex, 1).toLocaleDateString('en-US', { month: 'short' });
+}
 
 export function getDummyYearLog(yearOffset: number): YearLogDummy {
   const limit = DUMMY_ACTIVE_LIMIT;
@@ -793,7 +802,7 @@ export function getDummyYearLog(yearOffset: number): YearLogDummy {
   // biar variasi kelihatan kaya, sama pola Month tab.
   const CURRENT_YEAR_DEMO_STATES: YearMonthState[] = ['over', 'incomplete-open', 'incomplete-frozen', 'over', 'incomplete-frozen'];
 
-  const bars: YearBarDummy[] = MONTH_SHORT.map((label, i) => {
+  const bars: YearBarDummy[] = Array.from({ length: 12 }, (_, i) => monthInitial(i)).map((label, i) => {
     const monthAbsIndex = targetYear * 12 + i;
     const monthOffset = monthAbsIndex - currentMonthAbsIndex;
     const isFuture = monthOffset > 0;
@@ -840,7 +849,7 @@ export function getDummyYearLog(yearOffset: number): YearLogDummy {
     const weight = state === 'upcoming' ? null : weightAtWeekOffset(monthWeekOffset);
     const weightDelta = weight === null ? null : Math.round((weight - weightAtWeekOffset(prevMonthWeekOffset)) * 100) / 100;
 
-    return { label, monthOffset, intake, displayValue, limit: monthLimit, daysFilled, daysInMonth, weight, weightDelta, state };
+    return { label, monthFull: monthAbbrev(i), monthOffset, intake, displayValue, limit: monthLimit, daysFilled, daysInMonth, weight, weightDelta, state };
   });
 
   const weighableBars = bars.filter((b) => b.weight !== null);
@@ -875,7 +884,7 @@ export function getDummyYearLog(yearOffset: number): YearLogDummy {
       const deficit = Math.abs(b.limit - actualIntake);
       const hasIntake = b.intake !== null;
       return {
-        month: b.label,
+        month: b.monthFull,
         monthOffset: b.monthOffset,
         intake: actualIntake.toLocaleString('en-US'),
         limit: b.limit.toLocaleString('en-US'),

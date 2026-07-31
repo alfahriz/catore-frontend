@@ -47,14 +47,14 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
   const overLimit = data.sumIntake > data.sumLimit;
   const rawPercent = data.sumIntake / data.sumLimit;
 
-  // Y-axis Weight trend: buffer simetris tetap ±0.5kg dari titik ekstrem minggu ini (bukan dataMin-1/dataMax+1
-  // independen) — biar garis selalu "di tengah" area chart, gak nempel ke tepi atas/bawah. Gap antar-label
-  // adaptif dari (max-min)/jumlahMinggu — lihat buildWeightTicks — bukan threshold fixed.
+  // Y-axis Weight trend: grid buatan rata N tick (N = jumlah minggu weighable) dari weightMin ke
+  // weightMax — lihat buildWeightTicks. Domain dikasih padding visual kecil di luar tick pertama/
+  // terakhir (biar titik data gak nempel ke tepi plot area) TANPA nambah tick/label baru — cuma
+  // area render yang lebih lega, angka yang ditampilkan tetap persis array ticks.
   const weightValues = data.weightTrend.map((w) => w.weight);
-  const weightMin = Math.min(...weightValues);
-  const weightMax = Math.max(...weightValues);
-  const weightDomain: [number, number] = [weightMin - 0.5, weightMax + 0.5];
-  const weightTicks = buildWeightTicks(weightValues, weightDomain, data.bars.length);
+  const weightTicks = buildWeightTicks(weightValues);
+  const weightPad = weightTicks.length > 1 ? (weightTicks[weightTicks.length - 1] - weightTicks[0]) * 0.08 : 0.3;
+  const weightDomain: [number, number] = [weightTicks[0] - weightPad, weightTicks[weightTicks.length - 1] + weightPad];
 
   // 3 case sama seperti Day tab ("Left of") & Week tab ("Avg Intake/Day"): normal (<80%) / caution (80-99%) / over (>=100%)
   const avgIntakeBg = overLimit
@@ -149,14 +149,15 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
           <>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={data.weightTrend} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="4 4" stroke="rgba(180, 160, 120, 0.45)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="4 4" stroke="rgba(180, 160, 120, 0.1)" horizontalValues={weightTicks} verticalValues={data.weightTrend.map((w) => w.label)} />
+                <XAxis dataKey="label" padding={{ left: 10, right: 10 }} tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} axisLine={{ stroke: 'var(--color-border)', strokeWidth: 1.5 }} tickLine={false} />
                 <YAxis
                   domain={weightDomain}
                   ticks={weightTicks}
                   interval={0}
+                  tickFormatter={(v: number) => v.toFixed(2)}
                   tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }}
-                  axisLine={false}
+                  axisLine={{ stroke: 'var(--color-border)', strokeWidth: 1.5 }}
                   tickLine={false}
                 />
                 <Line type="monotone" dataKey="weight" stroke="var(--color-accent)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={false} isAnimationActive animationDuration={700} />
@@ -227,9 +228,9 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
                 >
                   <span className={styles.rowDay}>{row.week}</span>
                   <span>{row.logged}</span>
-                  <span>{row.weight !== null ? `${row.weight.toFixed(2)} kg` : '–'}</span>
+                  <span>{row.weight !== null ? row.weight.toFixed(2) : '–'}</span>
                   <span style={{ color: row.delta === null ? 'var(--color-text-secondary)' : row.delta > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>
-                    {row.delta === null ? '–' : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)} kg`}
+                    {row.delta === null ? '–' : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)}`}
                   </span>
                 </button>
               );

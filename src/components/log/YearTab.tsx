@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { UtensilsCrossed, Scale } from 'lucide-react';
 import { BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getDummyYearLog } from '../../lib/dummyData';
-import { buildWeightTicks } from '../../lib/weightTicks';
+import { buildWeightTicks, pickLabelTicks } from '../../lib/weightTicks';
 import { ChartLegend } from './ChartLegend';
 import styles from './LogTabs.module.css';
 
@@ -45,14 +45,15 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
   const overLimit = data.sumIntake > data.sumLimit;
   const rawPercent = data.sumIntake / data.sumLimit;
 
-  // Y-axis Weight trend: buffer simetris ±0.5kg (sama Month tab). Gap adaptif — lihat buildWeightTicks.
-  // TODO: belum di-tune khusus Year tab (fokus sesi ini di Month tab dulu) — masih pakai formula sama,
-  // kemungkinan perlu penyesuaian terpisah nanti (mis. dibagi jumlah bulan, bukan minggu).
+  // Y-axis Weight trend: grid line ikut SEMUA titik bulan weighable (sama pola Month tab, 1:1 data),
+  // tapi 12 bulan kalau semua dikasih TEKS angka numpuk padat — jadi cuma ~6 tick yang ditampilin
+  // labelnya (pickLabelTicks, index dipilih merata TERMASUK awal & akhir), sisanya grid polos tanpa
+  // angka. Grid TETAP lengkap 12, cuma teks yg dikurangin.
   const weightValues = data.weightTrend.map((w) => w.weight);
-  const weightMin = Math.min(...weightValues);
-  const weightMax = Math.max(...weightValues);
-  const weightDomain: [number, number] = [weightMin - 0.5, weightMax + 0.5];
-  const weightTicks = buildWeightTicks(weightValues, weightDomain, data.bars.length);
+  const weightTicks = buildWeightTicks(weightValues);
+  const weightLabelTicks = pickLabelTicks(weightTicks, 6);
+  const weightPad = weightTicks.length > 1 ? (weightTicks[weightTicks.length - 1] - weightTicks[0]) * 0.08 : 0.3;
+  const weightDomain: [number, number] = [weightTicks[0] - weightPad, weightTicks[weightTicks.length - 1] + weightPad];
 
   // 3 case sama seperti Month tab ("Avg Intake/Week"): normal (<80%) / caution (80-99%) / over (>=100%)
   const avgIntakeBg = overLimit
@@ -63,7 +64,7 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
 
   // Tabel Weight trend: iterasi dari data.bars (SEMUA bulan tahun ini, termasuk upcoming) — sama pola Month tab.
   const weightRows = data.bars.map((bar) => ({
-    month: bar.label,
+    month: bar.monthFull,
     monthOffset: bar.monthOffset,
     logged: `${bar.daysFilled}/${bar.daysInMonth}`,
     weight: bar.weight,
@@ -143,14 +144,15 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
           <>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={data.weightTrend} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="4 4" stroke="rgba(180, 160, 120, 0.45)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="4 4" stroke="rgba(180, 160, 120, 0.1)" horizontalValues={weightTicks} />
+                <XAxis dataKey="label" padding={{ left: 10, right: 10 }} tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} axisLine={{ stroke: 'var(--color-border)', strokeWidth: 1.5 }} tickLine={false} />
                 <YAxis
                   domain={weightDomain}
                   ticks={weightTicks}
                   interval={0}
+                  tickFormatter={(v: number) => (weightLabelTicks.includes(v) ? v.toFixed(2) : '')}
                   tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }}
-                  axisLine={false}
+                  axisLine={{ stroke: 'var(--color-border)', strokeWidth: 1.5 }}
                   tickLine={false}
                 />
                 <Line type="monotone" dataKey="weight" stroke="var(--color-accent)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={false} isAnimationActive animationDuration={700} />
@@ -221,9 +223,9 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
                 >
                   <span className={styles.rowDay}>{row.month}</span>
                   <span>{row.logged}</span>
-                  <span>{row.weight !== null ? `${row.weight.toFixed(2)} kg` : '–'}</span>
+                  <span>{row.weight !== null ? row.weight.toFixed(2) : '–'}</span>
                   <span style={{ color: row.delta === null ? 'var(--color-text-secondary)' : row.delta > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>
-                    {row.delta === null ? '–' : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)} kg`}
+                    {row.delta === null ? '–' : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)}`}
                   </span>
                 </button>
               );
