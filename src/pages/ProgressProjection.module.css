@@ -1,0 +1,105 @@
+.page {
+  padding: var(--space-md);
+  padding-bottom: 100px;
+}
+
+/* Recharts <Brush> SEKARANG cuma "mesin" auto-crop window (Redux state internal Recharts v3,
+   lihat komentar di ProgressProjection.tsx dekat windowedChartData) — TAMPILAN & interaksi user
+   dipindah total ke RangeSlider.tsx (HTML native <input type=range> custom, lebih stabil drpd CSS
+   translate/override yg rapuh terhadap struktur DOM internal Recharts). Brush TETAP ada di
+   <ComposedChart>, JANGAN dihapus dari JSX — itu prasyarat auto-crop window (fix susah payah sesi
+   2026-09-11/14 sebelumnya, tetap dipertahankan meski Brush gak dipakai user langsung lagi).
+   height:0 doang SEMPAT dicoba tapi TERBUKTI GAK CUKUP — child SVG Brush (rect/circle traveller)
+   digambar pakai koordinat dari prop `height={8}` yg tetap dipassing ke Brush, bukan dari CSS,
+   jadi tetap nongol/overflow keluar wrapper 0-tinggi. Fix: opacity:0 (nutup render visual APAPUN
+   koordinat childnya) + pointer-events:none (biar gak nyuri klik/drag dari RangeSlider yg
+   ditumpuk visual di posisi lain) + overflow:hidden (jaga-jaga). */
+.page :global(.recharts-brush) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+.pageTitle {
+  font-size: var(--font-size-h2);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.chartSection {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.axisLabel {
+  font-size: 10.5px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.narrative {
+  margin-top: var(--space-md);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.narrativeSmall {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.sliderSection {
+  margin-top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+
+.showingLabel {
+  margin-top: var(--space-sm);
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.pageButton {
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pageButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pageIndicator {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.previewRow {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

@@ -3,6 +3,7 @@
 // tanpa perlu menyentuh komponen yang mengimpornya.
 
 import type { DayState } from './dayState';
+import { buildProjectionYTicks } from './projectionTicks';
 
 export interface WeekDayDummy {
   label: string;
@@ -895,5 +896,190 @@ export function getDummyYearLog(yearOffset: number): YearLogDummy {
         state: b.state,
       };
     }),
+  };
+}
+
+// --- Progress Projection (Brief 10) ---
+// PRD Section 4.6. Deficit-only: Ideal line = akumulasi deficit ÷ 7700 kcal/kg, kategori Mid dipakai
+// buat garis (Soft/Hard cuma dipakai hitung rentang ETA narasi). Formula & angka dasar (weightKg/
+// goalWeightKg/tdee) sengaja pakai DUMMY_PROFILE apa adanya, gak didup­likasi/di-hardcode ulang di sini.
+//
+// PRINSIP TEGAS (dikonfirmasi ulang 2026-09-14 setelah sempat salah arah — lihat riwayat sesi kalau
+// perlu detail): garis Reality SELALU murni HISTORI/LOG BENERAN (kayak data weightlog asli), TIDAK
+// PERNAH ada proyeksi/ekstrapolasi rate ke masa depan. Kalau mau demo skenario "Reality capai/lewat
+// Goal", cara yang BENAR adalah PERPANJANG ARRAY HISTORI dummy-nya (checkpoint tambahan, seolah-olah
+// udah kejadian/tercatat), BUKAN bikin formula yang menghitung proyeksi. Fitur "chart diperpanjang
+// pakai proyeksi rate Reality" yang PERNAH ada di sini (realityChartPoints/realityProjection/
+// realityEtaDate) SUDAH DIHAPUS TOTAL — itu salah tafsir dari instruksi user, bukan yang diminta.
+//
+// "Hari ini" versi Progress Projection TIDAK PAKAI LOG_TODAY global (dipakai luas Homepage/Log
+// Day-Week-Month-Year) — modul ini pakai startDate FIXED + histori yg dibangun maju dari situ,
+// jadi "hari ini" implisit-nya = titik terakhir array reality[] (gak diekspos sbg field terpisah,
+// gak ada consumer yg butuh sekarang). Ini supaya histori Reality yg panjang sampai lewat Goal di
+// modul ini TIDAK mempengaruhi "hari ini" fitur lain yg masih pakai LOG_TODAY.
+const PROJECTION_REALITY_MONTHS_AFTER_IDEAL = 6; // Reality capai Goal berapa BULAN setelah Ideal
+
+const KCAL_PER_KG = 7700;
+const DEFICIT_CATEGORY_OFFSETS: Record<'Soft' | 'Mid' | 'Hard', number> = { Soft: 300, Mid: 400, Hard: 500 };
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function daysBetween(a: Date, b: Date): number {
+  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+export interface ProjectionPoint {
+  date: Date;
+  weight: number;
+}
+
+export interface ProjectionTableRow {
+  period: string; // "W1 Dec 2025" atau preview "~W200 Jan 2030"
+  ideal: number;
+  reality: number | null; // null = baris preview goal
+  delta: number | null; // Ideal - Reality, null utk baris preview
+  deltaIsPositive: boolean;
+  isPreview: boolean;
+}
+
+export interface ProjectionDummy {
+  profileCreatedAt: Date;
+  goalWeightKg: number;
+  tdee: number;
+  reality: ProjectionPoint[]; // checkpoint mingguan (Jumat), MURNI histori/log — dipakai chart & tabel, GAK ADA proyeksi
+  ideal: ProjectionPoint[]; // mulus, dari titik awal sama sampai Goal (kategori Mid)
+  idealEtaDate: Date; // tanggal Ideal (Mid) capai Goal
+  softEtaDate: Date; // dipakai narasi ETA & posisi default slider (Picker B)
+  hardEtaDate: Date;
+  yTicks: number[];
+  // xAxisTier BUKAN field di sini — tier X-axis dihitung di komponen dari WINDOW AKTIF (slider),
+  // bukan dari rentang total proyeksi statis (keputusan user sesi 2026-09-11, lihat ProgressProjection.tsx).
+  xAxisEndDate: Date; // akhir proyeksi Soft — batas kanan default slider
+  tableRows: ProjectionTableRow[];
+}
+
+export function getDummyProjection(): ProjectionDummy {
+  const { weightKg: startWeight, goalWeightKg, tdee } = DUMMY_PROFILE;
+
+  // startDate FIXED (bukan dihitung mundur dari "hari ini") — krn sekarang histori Reality dibikin
+  // PANJANG SAMPAI LEWAT Goal (kejadian di masa depan relatif terhadap LOG_TODAY global), titik
+  // AWAL histori gak lagi punya hubungan sama LOG_TODAY sama sekali. Dipilih 23 Jan 2026 (tanggal
+  // yg sama dgn seed backend Database/seed.sql, biar dummy FE & seed BE konsisten kalau nanti
+  // dibandingkan).
+  const startDate = new Date(2026, 0, 23);
+
+  // Ideal: mulus dari titik awal (startDate/startWeight = DUMMY_PROFILE apa adanya), kategori Mid,
+  // linear turun (400kcal/hari / 7700 kcal/kg) sampai tepat goalWeightKg.
+  const idealTotalToLoseKg = startWeight - goalWeightKg;
+  const midOffset = DEFICIT_CATEGORY_OFFSETS.Mid;
+  const kgPerDayMid = midOffset / KCAL_PER_KG;
+  const idealTotalDays = Math.ceil(idealTotalToLoseKg / kgPerDayMid);
+  const idealEtaDate = addDays(startDate, idealTotalDays);
+
+  const ideal: ProjectionPoint[] = [];
+  const idealStepDays = 7; // 1 titik/minggu, cukup halus utk garis mulus di chart
+  for (let d = 0; d <= idealTotalDays; d += idealStepDays) {
+    ideal.push({ date: addDays(startDate, d), weight: Math.round((startWeight - kgPerDayMid * d) * 100) / 100 });
+  }
+  if (ideal[ideal.length - 1]?.date.getTime() !== idealEtaDate.getTime()) {
+    ideal.push({ date: idealEtaDate, weight: goalWeightKg });
+  }
+
+  // Reality: MURNI HISTORI/LOG (checkpoint mingguan Jumat dari startDate), TIDAK ADA proyeksi/
+  // ekstrapolasi rate sama sekali — prinsip tegas, lihat komentar besar di atas file section ini.
+  // Skenario demo yg diminta user: Reality capai Goal PROJECTION_REALITY_MONTHS_AFTER_IDEAL bulan
+  // SETELAH Ideal capai Goal (lebih lambat, jelas divergen) — jadi array histori ini dibikin
+  // PANJANG SAMPAI TITIK ITU (semua titik dianggap SUDAH TERCATAT/kejadian, bukan proyeksi ke
+  // depan), lalu "hari ini" versi modul ini (PROJECTION_LOG_TODAY) di-set PERSIS di titik itu juga.
+  const realityGoalDate = new Date(idealEtaDate);
+  realityGoalDate.setMonth(realityGoalDate.getMonth() + PROJECTION_REALITY_MONTHS_AFTER_IDEAL);
+  const realityTotalDays = daysBetween(startDate, realityGoalDate);
+  const realityWeeks = Math.max(2, Math.round(realityTotalDays / 7));
+
+  // Pola turun bertahap + plateau tiap ~5 minggu (biar natural, bukan garis lurus sempurna), TAPI
+  // di-scale supaya titik TERAKHIR pas jatuh di goalWeightKg persis (bukan proyeksi — ini "takdir"
+  // histori dummy yg sengaja dibikin sampai situ).
+  const PLATEAU_INTERVAL = 5;
+  const rawWeeklyDeltas: number[] = [];
+  for (let i = 0; i < realityWeeks; i += 1) {
+    if (i % PLATEAU_INTERVAL === PLATEAU_INTERVAL - 1) {
+      rawWeeklyDeltas.push(-0.05 + 0.15 * Math.sin(i)); // stagnan/naik dikit
+    } else {
+      rawWeeklyDeltas.push(0.2 + 0.1 * Math.abs(Math.sin(i * 1.7))); // turun 0.2-0.3kg
+    }
+  }
+  const rawTotal = rawWeeklyDeltas.reduce((s, d) => s + d, 0);
+  const targetTotal = startWeight - goalWeightKg;
+  const scale = rawTotal > 0 ? targetTotal / rawTotal : 1;
+  const weeklyDeltas = rawWeeklyDeltas.map((d) => d * scale);
+
+  const reality: ProjectionPoint[] = [{ date: startDate, weight: Math.round(startWeight * 100) / 100 }];
+  let runningWeight = startWeight;
+  for (let i = 0; i < weeklyDeltas.length; i += 1) {
+    runningWeight -= weeklyDeltas[i];
+    reality.push({ date: addDays(startDate, 7 * (i + 1)), weight: Math.round(runningWeight * 100) / 100 });
+  }
+  // Titik terakhir dipaksa PERSIS goalWeightKg (hindari drift pembulatan dari akumulasi delta) —
+  // ini jadi "hari ini" versi modul ini (beda dari LOG_TODAY global), meski gak diekspos sbg field
+  // terpisah krn belum ada consumer yg butuh (ProgressProjection.tsx cuma pakai isGoalAchieved).
+  reality[reality.length - 1] = { date: reality[reality.length - 1].date, weight: goalWeightKg };
+
+  // ETA narasi: rentang Soft (paling lambat) - Hard (paling cepat) — basis sama kayak Ideal, biar
+  // konsisten 1 titik awal yg sama persis dgn garis Ideal/Reality. Dipakai jg batas kanan slider default.
+  const softTotalDays = Math.ceil(idealTotalToLoseKg / (DEFICIT_CATEGORY_OFFSETS.Soft / KCAL_PER_KG));
+  const hardTotalDays = Math.ceil(idealTotalToLoseKg / (DEFICIT_CATEGORY_OFFSETS.Hard / KCAL_PER_KG));
+  const softEtaDate = addDays(startDate, softTotalDays);
+  const hardEtaDate = addDays(startDate, hardTotalDays);
+
+  const yTicks = buildProjectionYTicks(reality.map((p) => p.weight), goalWeightKg);
+
+  // Tabel: 1 baris per checkpoint Reality asli (Ideal look-up di tanggal yg sama, interpolasi linear
+  // antar titik terdekat karena ideal[] cuma 1 titik/minggu jadi biasanya pas nempel tanggalnya sama),
+  // + 1 baris preview goal di akhir (Ideal=Goal, Reality & Delta "-").
+  function idealWeightAtDate(date: Date): number {
+    if (date >= idealEtaDate) return goalWeightKg;
+    const daysFromStart = daysBetween(startDate, date);
+    return Math.round((startWeight - kgPerDayMid * daysFromStart) * 100) / 100;
+  }
+
+  function formatPeriodLabel(date: Date, weekNumber: number, tilde: boolean): string {
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `${tilde ? '~' : ''}W${weekNumber} ${month} ${year}`;
+  }
+
+  const dataRows: ProjectionTableRow[] = reality.map((point, i) => {
+    const idealAtPoint = idealWeightAtDate(point.date);
+    const delta = Math.round((idealAtPoint - point.weight) * 100) / 100;
+    return {
+      period: formatPeriodLabel(point.date, i + 1, false),
+      ideal: idealAtPoint,
+      reality: point.weight,
+      delta,
+      deltaIsPositive: delta >= 0,
+      isPreview: false,
+    };
+  });
+
+  // Preview row (dulu: "~W_ [Ideal capai Goal], Reality=-") DIHAPUS — histori Reality sekarang
+  // BENERAN sampai capai Goal (baris terakhir dataRows udah nunjukin itu), jadi preview row bakal
+  // duplikat/gak relevan lagi.
+
+  return {
+    profileCreatedAt: startDate,
+    goalWeightKg,
+    tdee,
+    reality,
+    ideal,
+    idealEtaDate,
+    softEtaDate,
+    hardEtaDate,
+    yTicks,
+    xAxisEndDate: softEtaDate,
+    tableRows: dataRows,
   };
 }
