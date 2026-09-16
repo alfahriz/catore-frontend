@@ -1052,11 +1052,20 @@ export function getDummyProjection(): ProjectionDummy {
     return `${tilde ? '~' : ''}W${weekNumber} ${month} ${year}`;
   }
 
-  const dataRows: ProjectionTableRow[] = reality.map((point, i) => {
+  // W1..Wn reset tiap bulan kalender baru (samain sama weekNumberByTime chart X-axis,
+  // ProgressProjection.tsx — sebelumnya di sini masih pakai index sequential `i+1`,
+  // ketauan beda pas tabel screenshot nunjukin W1..W10 nonstop lintas 3 bulan, ketuker
+  // sama chart yg udah reset. 1 sumber logic, jangan drift lagi).
+  let periodCounter = 0;
+  let periodLastMonthKey: string | null = null;
+  const dataRows: ProjectionTableRow[] = reality.map((point) => {
+    const monthKey = `${point.date.getFullYear()}-${point.date.getMonth()}`;
+    periodCounter = monthKey === periodLastMonthKey ? periodCounter + 1 : 1;
+    periodLastMonthKey = monthKey;
     const idealAtPoint = idealWeightAtDate(point.date);
     const delta = Math.round((idealAtPoint - point.weight) * 100) / 100;
     return {
-      period: formatPeriodLabel(point.date, i + 1, false),
+      period: formatPeriodLabel(point.date, periodCounter, false),
       ideal: idealAtPoint,
       reality: point.weight,
       delta,

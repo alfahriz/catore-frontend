@@ -1,8 +1,88 @@
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
+import { apiClient } from '../../api/client';
+import { useAuthStore } from '../../lib/authStore';
+import { useToastStore } from '../../lib/toastStore';
+import styles from './Auth.module.css';
+
+// PRD 4.0: error kredensial pakai pesan GENERIK ("Email atau password salah") — gak bedain email
+// gak ketemu vs password salah, demi keamanan (gak bocorin akun terdaftar/tidak). Error network/server
+// beda pesan. Semua error tampil sbg toast atas (Design Brief 12 + pola global app ini).
 export function Login() {
+  const navigate = useNavigate();
+  const setTokens = useAuthStore((s) => s.setTokens);
+  const showToast = useToastStore((s) => s.showToast);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await apiClient.post('/auth/login', { email, password });
+      setTokens(res.data.accessToken, res.data.refreshToken);
+      // KOREKSI 2026-09-16: sebelumnya hardcode langsung navigate('/homepage') di sini — SALAH,
+      // ketauan pas testing manual (Profile akun test 404 tapi tetap "berhasil" masuk Homepage
+      // krn Homepage-nya sendiri masih dummy data, gak pernah manggil API buat kepergok gagalnya).
+      // Fix: lempar ke /splash, biar auth-check di sana (New User->Onboarding, Post-Wipe->
+      // WelcomeBack, Existing->Homepage) yg nentuin tujuan sebenarnya — 1 sumber logic routing,
+      // jangan duplikasi keputusan New/Existing/Post-Wipe di 2 tempat (Login DAN Splash).
+      navigate('/splash');
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      if (status === 401) {
+        showToast('Email atau password salah', 'error');
+      } else {
+        showToast('Network error — please try again', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div>
-      <h2>Login</h2>
-      <p>TODO: implement per Design Brief (Section 12)</p>
+    <div className={styles.authPage}>
+      <h1 className={styles.title}>Log in</h1>
+
+      <div className={styles.fields}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Email</span>
+          <input
+            type="email"
+            className={styles.fieldInput}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Password</span>
+          <div className={styles.passwordWrapper}>
+            <input
+              type={passwordVisible ? 'text' : 'password'}
+              className={styles.fieldInput}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            <button type="button" className={styles.eyeButton} onClick={() => setPasswordVisible((v) => !v)} aria-label="Toggle password visibility">
+              {passwordVisible ? <EyeOff size={17} strokeWidth={2} color="var(--color-text-secondary)" /> : <Eye size={17} strokeWidth={2} color="var(--color-text-secondary)" />}
+            </button>
+          </div>
+        </label>
+      </div>
+
+      <button className={styles.primaryButton} onClick={handleLogin} disabled={loading || !email || !password}>
+        {loading ? 'Logging in…' : 'Login'}
+      </button>
+
+      <div className={styles.linkRow}>
+        <Link to="/forgot-password" className={styles.link}>Forgot password?</Link>
+        <Link to="/signup" className={styles.link}>Sign Up</Link>
+      </div>
     </div>
   );
 }

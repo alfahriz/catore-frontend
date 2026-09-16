@@ -21,6 +21,7 @@ export const useUnitStore = create<UnitState>()(
 );
 
 const KG_TO_LB = 2.20462;
+const CM_TO_IN = 0.393701;
 
 // Format angka weight (SELALU disimpan sbg kg) ke string tampilan sesuai preference aktif —
 // "77.40 kg" atau "170.64 lb". Dipakai di semua tempat yg nampilin weight (Homepage, Log, Monthly
@@ -42,4 +43,16 @@ export function formatWeightNumber(kg: number, unit: 'kg' | 'lb'): string {
 export function kgToUnit(kg: number, unit: 'kg' | 'lb'): number {
   const converted = unit === 'lb' ? kg * KG_TO_LB : kg;
   return Math.round(converted * 100) / 100;
+}
+
+// Height (SELALU disimpan sbg cm, sama prinsip weight selalu kg) -> string siap-tampil sesuai
+// preference aktif ('kg' pref = tampil cm, 'lb' pref = tampil inch) — dipakai Profile.tsx field Height.
+export function formatHeightNumber(cm: number, unit: 'kg' | 'lb'): string {
+  return unit === 'lb' ? (cm * CM_TO_IN).toFixed(2) : cm.toFixed(2);
+}
+
+// Convert angka height dalam unit AKTIF (hasil ketikan user) balik ke cm mentah utk disimpan ke
+// state — kebalikan formatHeightNumber, dipakai di onChange field Height.
+export function heightToCm(value: number, unit: 'kg' | 'lb'): number {
+  return unit === 'lb' ? value / CM_TO_IN : value;
 }

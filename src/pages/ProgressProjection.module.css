@@ -1,6 +1,5 @@
 .page {
-  padding: var(--space-md);
-  padding-bottom: 100px;
+  padding: 15px 15px 30px;
 }
 
 /* Recharts <Brush> SEKARANG cuma "mesin" auto-crop window (Redux state internal Recharts v3,
@@ -18,6 +17,20 @@
   opacity: 0 !important;
   pointer-events: none !important;
   overflow: hidden !important;
+}
+
+/* ChartLegend (components/log/ChartLegend.tsx) shared sama Log tabs — border-top di sana
+   emang divider nempel-langsung-setelah-chart. Di halaman ini chart udah section/card
+   terpisah (chartSection), jadi border itu kelihatan nyasar/gak nyambung apa-apa.
+   CSS Modules hash className per-file (`.chartLegend` di LogTabs.module.css jadi
+   `_chartLegend_xxxxx_97`, BUKAN literal "chartLegend") — selector `:global(.chartLegend)`
+   SEBELUMNYA gak pernah match apa pun krn itu (ketauan dari computed style browser inspect
+   user, border-top msh nongol walau CSS ini udah ditulis). Fix: class baru di-compose
+   bareng logStyles.chartLegend di JSX (`${logStyles.chartLegend} ${styles.legendNoBorder}`),
+   bukan override lewat parent selector. */
+.legendNoBorder {
+  border-top: none !important;
+  padding-top: 0 !important;
 }
 
 .pageTitle {

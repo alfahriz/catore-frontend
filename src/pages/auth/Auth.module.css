@@ -1,0 +1,125 @@
+.authPage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.title {
+  font-size: var(--font-size-h1);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-lg);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.fieldInput {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  border: 1.5px solid var(--color-border);
+  padding: 13px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.passwordWrapper {
+  position: relative;
+}
+
+.passwordWrapper .fieldInput {
+  padding-right: 42px;
+}
+
+.eyeButton {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+}
+
+.primaryButton {
+  margin-top: var(--space-lg);
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 15px;
+  border-radius: var(--radius-xl);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.secondaryButton {
+  margin-top: var(--space-sm);
+  width: 100%;
+  border: 1.5px solid var(--color-border);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 14px;
+  border-radius: var(--radius-xl);
+  background: none;
+  color: var(--color-text-primary);
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.linkRow {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-md);
+}
+
+.link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.linkCenter {
+  display: block;
+  text-align: center;
+  margin-top: var(--space-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-sm);
+  line-height: 1.4;
+}

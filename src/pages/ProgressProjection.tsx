@@ -83,8 +83,29 @@ export function ProgressProjection() {
       const existing = points.get(t) ?? { time: t, reality: null, ideal: null };
       points.set(t, { ...existing, ideal: kgToUnit(p.weight, metricPreference) });
     });
-    return Array.from(points.values()).sort((a, b) => a.time - b.time);
+    // Titik KOSONG tambahan di ujung (buffer 25% dari durasi total, y' = y + 0.25*(y-x) — naik dari
+    // 10% awal, user minta lebih jauh jaraknya) — biar area chart py ruang napas visual setelah
+    // titik data terjauh, gak mentok pas di tepi kanan. Cuma dorong DOMAIN kategorikal XAxis,
+    // reality/ideal null (gak digambar Line apa pun, connectNulls treat sbg gap). Ditambah DI SINI
+    // (bukan di dummyData.ts) krn ini murni concern rendering chart, bukan bagian data histori/
+    // proyeksi asli — data.reality/data.ideal TETAP murni tanpa titik buatan (prinsip tegas
+    // "reality = histori asli" gak boleh kesenggol titik kosmetik ini).
+    const allPoints = Array.from(points.values()).sort((a, b) => a.time - b.time);
+    if (allPoints.length > 0) {
+      const x = allPoints[0].time;
+      const y = allPoints[allPoints.length - 1].time;
+      const yPrime = y + 0.25 * (y - x);
+      allPoints.push({ time: yPrime, reality: null, ideal: null });
+    }
+    return allPoints;
   }, [data, metricPreference]);
+
+  // Titik kosong buffer (ditambah di atas) HARUS di-exclude dari nomor minggu — dia bukan checkpoint
+  // asli, gak boleh kebagian label "W_" apa pun ataupun ikut nge-reset/nambah counter bulan berjalan.
+  const lastRealDataTime = data.reality[data.reality.length - 1]?.date.getTime();
+  const lastIdealTime = data.ideal[data.ideal.length - 1]?.date.getTime();
+  const bufferPointTime = chartData.length > 0 ? chartData[chartData.length - 1].time : undefined;
+  const isBufferPoint = (t: number) => t === bufferPointTime && t !== lastRealDataTime && t !== lastIdealTime;
 
   // W1..Wn RESET tiap bulan kalender baru (keputusan user 2026-09-14, gantiin sequential
   // global dari seluruh chart — itu SEMPAT jadi fix buat bug "W0" di luar histori, tapi ternyata
@@ -97,6 +118,7 @@ export function ProgressProjection() {
     let counter = 0;
     let lastMonthKey: string | null = null;
     chartData.forEach((p) => {
+      if (isBufferPoint(p.time)) return;
       const d = new Date(p.time);
       const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
       counter = monthKey === lastMonthKey ? counter + 1 : 1;
@@ -117,31 +139,13 @@ export function ProgressProjection() {
   const idealFirst = data.ideal[0];
   const idealLast = data.ideal[data.ideal.length - 1];
 
-  // Titik akhir default slider (BUKAN full-range chart) — formula 2026-09-14, gantiin logic lama
-  // "cuma sampai proyeksi Soft" (PRD 4.6 literal). x = startDate (titik awal chart). y = tanggal
-  // TERJAUH antara [eta proyeksi Soft] vs [tanggal log weight TERAKHIR yg beneran tercatat user,
-  // data.reality histori asli — BUKAN proyeksi Reality ke depan]. y' = y + 10% dari durasi (y-x),
-  // dipakai sbg endDate FINAL biar ada buffer/jarak dari titik y ke ujung kanan chart (garis end
-  // gak mentok persis di tepi, ada ruang visual). Index chartData yg dipakai = yg TANGGALNYA
-  // PALING DEKAT ke y' (bukan strict >=, krn y' hasil hitungan bisa jatuh di antara 2 titik data).
-  const defaultBrushEndIndex = useMemo(() => {
-    if (chartData.length === 0) return 0;
-    const x = data.reality[0].date.getTime();
-    const latestLogDate = data.reality[data.reality.length - 1].date.getTime();
-    const y = Math.max(data.xAxisEndDate.getTime(), latestLogDate);
-    const yPrime = y + 0.1 * (y - x);
-
-    let closestIndex = 0;
-    let closestDiff = Infinity;
-    chartData.forEach((p, i) => {
-      const diff = Math.abs(p.time - yPrime);
-      if (diff < closestDiff) {
-        closestDiff = diff;
-        closestIndex = i;
-      }
-    });
-    return closestIndex;
-  }, [chartData, data]);
+  // Default slider SEKARANG full-range (0 sampai index TERAKHIR chartData, TERMASUK titik buffer
+  // 25%) — user minta "dibuat full aja", biar begitu halaman dibuka langsung nampilin seluruh
+  // rentang + ruang kosong ujung kanan (gak perlu drag manual). Gantiin formula lama (endIndex
+  // berhenti di y/titik data asli terakhir, exclude buffer) — riwayat formula lama masih relevan
+  // kalau nanti user minta balik ke behavior "berhenti pas di data", tapi utk sekarang plain
+  // `chartData.length - 1`.
+  const defaultBrushEndIndex = chartData.length > 0 ? chartData.length - 1 : 0;
   // Posisi slider aktual (default: day1 -> y', lihat defaultBrushEndIndex) — di-update via onChange
   // RangeSlider biar teks "Showing" & label real-time ikut posisi drag, bukan statis.
   const [brushRange, setBrushRange] = useState<[number, number]>([0, defaultBrushEndIndex]);
@@ -179,12 +183,17 @@ export function ProgressProjection() {
   // representative terpisah — muncul "Dec Dec" berdampingan tanpa pembeda apa pun (ketemu & difix
   // 2026-09-14, window ~13 minggu). Fix: dari hasil pickLabelTicks, dedup lagi by bulan+tahun unik
   // (titik PERTAMA yg muncul utk kombinasi itu yg dipertahankan) — konsisten sama prinsip tier year.
+  // Titik buffer kosong (ujung chartData, lihat komentar di chartData useMemo) DIKELUARIN dari
+  // kandidat label — kalau user drag slider sampai mentok penuh, titik ini bisa kepilih pickLabelTicks/
+  // dedup year-month sbg "representative", padahal dia bukan checkpoint asli & sengaja di-exclude
+  // dari weekNumberByTime (bakal muncul "W0" kalau kepilih jadi label).
+  const labelCandidatePoints = windowedChartData.filter((p) => !isBufferPoint(p.time));
   const visibleXLabelTimes =
     activeXAxisTier === 'year'
       ? (() => {
           const seenYears = new Set<number>();
           const times: number[] = [];
-          for (const p of windowedChartData) {
+          for (const p of labelCandidatePoints) {
             const y = new Date(p.time).getFullYear();
             if (!seenYears.has(y)) {
               seenYears.add(y);
@@ -195,7 +204,7 @@ export function ProgressProjection() {
         })()
       : activeXAxisTier === 'month'
         ? (() => {
-            const candidates = pickLabelTicks(windowedChartData.map((p) => p.time), X_AXIS_LABEL_TARGET.month);
+            const candidates = pickLabelTicks(labelCandidatePoints.map((p) => p.time), X_AXIS_LABEL_TARGET.month);
             const seenMonthYear = new Set<string>();
             const times: number[] = [];
             for (const t of candidates) {
@@ -208,7 +217,7 @@ export function ProgressProjection() {
             }
             return times;
           })()
-        : pickLabelTicks(windowedChartData.map((p) => p.time), X_AXIS_LABEL_TARGET[activeXAxisTier]);
+        : pickLabelTicks(labelCandidatePoints.map((p) => p.time), X_AXIS_LABEL_TARGET[activeXAxisTier]);
   const visibleXTimes = new Set(visibleXLabelTimes);
 
   // Tier "month" (PRD 4.6): tahun ditampilkan cuma di titik PERTAMA yg kelabel & titik transisi
@@ -318,6 +327,7 @@ export function ProgressProjection() {
       </div>
 
       <ChartLegend
+        className={styles.legendNoBorder}
         items={[
           { label: 'Reality', fill: 'oklch(56% 0.16 285)', border: 'oklch(56% 0.16 285)' },
           { label: 'Ideal', fill: 'oklch(58% 0.15 190)', border: 'oklch(58% 0.15 190)' },

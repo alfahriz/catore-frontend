@@ -6,9 +6,9 @@ interface LegendEntry {
   border: string;
 }
 
-export function ChartLegend({ items }: { items: LegendEntry[] }) {
+export function ChartLegend({ items, className }: { items: LegendEntry[]; className?: string }) {
   return (
-    <div className={styles.chartLegend}>
+    <div className={className ? `${styles.chartLegend} ${className}` : styles.chartLegend}>
       {items.map((item) => (
         <div className={styles.legendItem} key={item.label}>
           <svg width={14} height={14} className={styles.legendSwatch}>

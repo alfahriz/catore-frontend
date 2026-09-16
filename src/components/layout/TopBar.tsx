@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame } from 'lucide-react';
-import { DUMMY_STREAK } from '../../lib/dummyData';
+import { DUMMY_STREAK, DUMMY_PROFILE } from '../../lib/dummyData';
 import { StreakModal } from '../streak/StreakModal';
 import styles from './TopBar.module.css';
 
@@ -17,7 +17,7 @@ export function TopBar() {
       </button>
       <span className={styles.logo}>Catore</span>
       <button className={styles.avatar} onClick={() => navigate('/profile')} aria-label="Profile">
-        <span>?</span>
+        <span>{DUMMY_PROFILE.avatarInitial}</span>
       </button>
 
       <StreakModal open={streakModalOpen} onClose={() => setStreakModalOpen(false)} />

@@ -1,5 +1,5 @@
 .page {
-  padding: 8px var(--page-padding-x) var(--space-2xl);
+  padding: 8px 15px var(--space-2xl);
 }
 
 .identityCard {
@@ -10,7 +10,8 @@
   padding: 18px 16px;
   border-radius: var(--radius-xl);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--color-border);
+  box-shadow: -6px -6px 12px rgba(255, 255, 255, 0.95), 6px 6px 14px rgba(180, 160, 120, 0.4);
 }
 
 .avatar {
@@ -46,7 +47,8 @@
   padding: var(--space-md);
   border-radius: var(--radius-xl);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--color-border);
+  box-shadow: -6px -6px 12px rgba(255, 255, 255, 0.95), 6px 6px 14px rgba(180, 160, 120, 0.4);
 }
 
 .sectionEyebrow {
@@ -83,11 +85,10 @@
   font-family: inherit;
   font-size: var(--font-size-body);
   color: var(--color-text-primary);
-  border: none;
+  border: 1.5px solid var(--color-border);
   padding: 13px 14px;
   border-radius: var(--radius-lg);
-  background: var(--color-surface-input);
-  box-shadow: var(--shadow-input-inset);
+  background: var(--color-surface);
 }
 
 .genderButton {
@@ -96,11 +97,10 @@
   font-family: inherit;
   font-size: var(--font-size-body);
   color: var(--color-text-primary);
-  border: none;
+  border: 1.5px solid var(--color-border);
   padding: 13px 14px;
   border-radius: var(--radius-lg);
-  background: var(--color-surface-input);
-  box-shadow: var(--shadow-input-inset);
+  background: var(--color-surface);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -145,7 +145,8 @@
   padding: 14px 16px;
   border-radius: var(--radius-xl);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--color-border);
+  box-shadow: -6px -6px 12px rgba(255, 255, 255, 0.95), 6px 6px 14px rgba(180, 160, 120, 0.4);
 }
 
 .smallCardRow {
@@ -215,7 +216,8 @@
   padding: 14px 16px;
   border-radius: var(--radius-xl);
   background: oklch(55% 0.09 255 / 0.08);
-  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--color-border);
+  box-shadow: -6px -6px 12px rgba(255, 255, 255, 0.95), 6px 6px 14px rgba(180, 160, 120, 0.4);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -247,7 +249,8 @@
   min-width: 0;
   padding: 14px 16px;
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--color-border);
+  box-shadow: -6px -6px 12px rgba(255, 255, 255, 0.95), 6px 6px 14px rgba(180, 160, 120, 0.4);
 }
 
 .goalInputRow {
@@ -288,25 +291,40 @@
 }
 
 .numbersSection {
-  margin-top: var(--space-md);
+  margin-top: 22px;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
 }
 
-.numbersList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  margin-top: var(--space-sm);
-}
-
-.numberCard {
-  padding: 18px 20px;
+.numbersCard {
+  padding: 16px 18px;
   border-radius: var(--radius-xl);
   border: 1.5px solid var(--color-border);
   box-shadow: -6px -6px 12px rgba(255, 255, 255, 0.95), 6px 6px 14px rgba(180, 160, 120, 0.4);
+  background: var(--color-surface);
+  display: flex;
+  align-items: stretch;
+}
+
+.numbersCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.numbersDivider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--color-border);
+  margin: 0 18px;
+}
+
+.numberLabelRow {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  background: var(--color-surface);
+  gap: 6px;
 }
 
 .numberLabel {
@@ -318,7 +336,6 @@
 .numberSub {
   font-size: 10.5px;
   color: var(--color-text-secondary);
-  margin-top: 2px;
 }
 
 .numberValue {
@@ -350,7 +367,8 @@
   padding: 14px 16px;
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--color-border);
+  box-shadow: -6px -6px 12px rgba(255, 255, 255, 0.95), 6px 6px 14px rgba(180, 160, 120, 0.4);
 }
 
 .limitLabel {
