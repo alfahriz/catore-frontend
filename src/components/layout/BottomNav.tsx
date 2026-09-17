@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, Calendar, Plus, BarChart2, TrendingUp, UtensilsCrossed, Scale, X } from 'lucide-react';
 import { LogWeightModal } from '../weight/LogWeightModal';
 import { AddConsumptionModal } from '../consumption/AddConsumptionModal';
 import styles from './BottomNav.module.css';
 
 export function BottomNav() {
+  const navigate = useNavigate();
   const [fanOpen, setFanOpen] = useState(false);
   const [logWeightOpen, setLogWeightOpen] = useState(false);
   const [addConsumptionOpen, setAddConsumptionOpen] = useState(false);
@@ -61,7 +62,13 @@ export function BottomNav() {
       <LogWeightModal
         open={logWeightOpen}
         onClose={() => setLogWeightOpen(false)}
-        onSave={() => setLogWeightOpen(false)}
+        onSave={() => {
+          setLogWeightOpen(false);
+          // PRD 4.3 acceptance criteria: "Tap Save di form Log Weight selalu kembali ke Homepage
+          // setelah commit berhasil" — beda dari Add Consumption (yg TETAP di form/modal biar bisa
+          // lanjut batch berikutnya).
+          navigate('/homepage');
+        }}
       />
 
       <AddConsumptionModal

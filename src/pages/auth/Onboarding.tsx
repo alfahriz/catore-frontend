@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../api/client';
 import { useToastStore } from '../../lib/toastStore';
+import { todayLocalIso } from '../../lib/dateUtils';
 import { mapActivityAssessment, EXERCISE_DAY_OPTIONS } from '../../lib/activityAssessment';
 import styles from './Onboarding.module.css';
 
@@ -95,7 +96,7 @@ export function Onboarding() {
     if (!step3Valid || loading) return;
     setLoading(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayLocalIso();
       // PATCH daily-record return 404 kalau row belum ada — backend gak punya "get or create" di
       // endpoint PATCH itu sendiri (cuma GET yg punya, ConsumptionController.GetDailyRecord ->
       // GetOrCreateDailyRecord). Ketemu bug ini pas testing manual (403... eh 404) — GET dulu

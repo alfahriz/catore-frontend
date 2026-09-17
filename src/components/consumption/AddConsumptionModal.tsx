@@ -1,10 +1,25 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Pencil, X } from 'lucide-react';
-import { DUMMY_FOOD_HISTORY, DUMMY_QUICK_ADD, MEAL_TYPES, type MealType } from '../../lib/dummyData';
+import { MEAL_TYPES, type MealType } from '../../lib/dummyData';
+import { apiClient } from '../../api/client';
+import { useToastStore } from '../../lib/toastStore';
+import { useDataRefreshStore } from '../../lib/dataRefreshStore';
+import { todayLocalIso } from '../../lib/dateUtils';
 import { DatePickerField } from '../pickers/DatePickerField';
 import { TimePickerField } from '../pickers/TimePickerField';
 import { SubmitConfirmModal } from './SubmitConfirmModal';
 import styles from './AddConsumptionModal.module.css';
+
+interface AutocompleteItem {
+  foodName: string;
+  calories: number;
+}
+
+interface QuickAddItem {
+  foodName: string;
+  calories: number;
+  mealType: string;
+}
 
 function formatDateLabel(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -30,31 +45,25 @@ interface AddConsumptionModalProps {
   initialDate?: string; // ISO date, dipakai saat dibuka dari kartu backfill (tanggal ter-preset)
 }
 
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function nowIsoTime(): string {
   return new Date().toTimeString().slice(0, 5);
 }
 
 export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddConsumptionModalProps) {
+  const showToast = useToastStore((s) => s.showToast);
   const [mealType, setMealType] = useState<MealType>('Breakfast');
-  const [date, setDate] = useState(initialDate ?? todayIsoDate());
+  const [date, setDate] = useState(initialDate ?? todayLocalIso());
   const [time, setTime] = useState(nowIsoTime());
   const [draftName, setDraftName] = useState('');
   const [draftKcal, setDraftKcal] = useState('');
   const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [suggestions, setSuggestions] = useState<AutocompleteItem[]>([]);
+  const [quickAddItems, setQuickAddItems] = useState<QuickAddItem[]>([]);
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showDiscard, setShowDiscard] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-
-  const suggestions = useMemo(() => {
-    const query = draftName.trim().toLowerCase();
-    if (!showAutocomplete || query.length === 0) return [];
-    return DUMMY_FOOD_HISTORY.filter((h) => h.name.toLowerCase().includes(query)).slice(0, 5);
-  }, [draftName, showAutocomplete]);
+  const [submitting, setSubmitting] = useState(false);
 
   const hasDraft = draftName.trim().length > 0 || draftKcal.length > 0;
   const canAddDraft = draftName.trim().length > 0 && draftKcal.length > 0;
@@ -64,17 +73,45 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
     setDraftName('');
     setDraftKcal('');
     setShowAutocomplete(false);
+    setSuggestions([]);
     setSavedItems([]);
     setEditingIndex(null);
     setShowDiscard(false);
     setShowSubmitConfirm(false);
   };
 
+  // Autotext berbasis histori (PRD 4.3) — search ke SELURUH histori consumptionentry milik user
+  // (BEDA dari quick-add yg cuma "kemarin"), debounce 250ms biar gak spam request tiap keystroke.
+  useEffect(() => {
+    const query = draftName.trim();
+    if (!showAutocomplete || query.length === 0) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      apiClient
+        .get<AutocompleteItem[]>('/consumption/autocomplete', { params: { query, page: 0, pageSize: 5 } })
+        .then((res) => setSuggestions(res.data))
+        .catch(() => setSuggestions([]));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [draftName, showAutocomplete]);
+
+  // Quick-add chips (PRD 4.3: "Recent items — everything you ate yesterday") — fetch sekali tiap
+  // modal dibuka, gak perlu re-fetch tiap keystroke (beda dari autocomplete).
+  useEffect(() => {
+    if (!open) return;
+    apiClient
+      .get<QuickAddItem[]>('/consumption/quick-add')
+      .then((res) => setQuickAddItems(res.data))
+      .catch(() => setQuickAddItems([]));
+  }, [open]);
+
   // Sync tanggal & waktu tiap kali modal dibuka — bukan cuma di mount pertama,
   // karena modal ini tetap ter-render (open toggle doang) dan initialDate bisa beda tiap dibuka (dari kartu backfill berbeda).
   useEffect(() => {
     if (open) {
-      setDate(initialDate ?? todayIsoDate());
+      setDate(initialDate ?? todayLocalIso());
       setTime(nowIsoTime());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,9 +139,9 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
     setShowAutocomplete(false);
   };
 
-  const handleSelectSuggestion = (item: { name: string; kcal: number }) => {
-    setDraftName(item.name);
-    setDraftKcal(String(item.kcal));
+  const handleSelectSuggestion = (item: AutocompleteItem) => {
+    setDraftName(item.foodName);
+    setDraftKcal(String(item.calories));
     setShowAutocomplete(false);
   };
 
@@ -122,8 +159,14 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
     if (editingIndex === index) setEditingIndex(null);
   };
 
-  const handleQuickAdd = (item: { name: string; kcal: number }) => {
-    setSavedItems((items) => [...items, { name: item.name, kcal: String(item.kcal) }]);
+  // PRD 4.3: tap chip quick-add CUMA ngisi form draft (nama+kalori) — BUKAN langsung commit ke
+  // list, beda dari implementasi dummy lama yg langsung push ke savedItems. User tetap harus tap
+  // "+" manual. "Kalau form draft sudah terisi dan user tap chip lain, isi draft LANGSUNG tertimpa"
+  // — makanya gak ada guard `if (hasDraft) return` di sini (beda dari aturan pensil/edit row).
+  const handleQuickAdd = (item: QuickAddItem) => {
+    setDraftName(item.foodName);
+    setDraftKcal(String(item.calories));
+    setShowAutocomplete(false);
   };
 
   const totalKcal = savedItems.reduce((sum, r) => sum + (parseInt(r.kcal, 10) || 0), 0);
@@ -139,9 +182,34 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
     setShowSubmitConfirm(true);
   };
 
-  const handleConfirmSave = () => {
-    onSave(savedItems);
-    resetState();
+  const handleConfirmSave = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      // EntryTimestamp digabung dari date+time field (2 input terpisah di UI, 1 field DateTime
+      // di backend, AddEntriesRequestDto) — kolom DB `timestamptz`, Npgsql NOLAK DateTime
+      // Kind=Unspecified (string tanpa suffix Z/offset) dgn ArgumentException 500 (ketemu pas
+      // testing submit beneran, bukan cuma baca kode). Backend SENDIRI gak convert timezone field
+      // ini (grouping "hari" di ConsumptionRepository pakai `entryTimestamp AT TIME ZONE 'UTC'`,
+      // asumsi timestamp yg disimpan = representasi hari yg user maksud) — jadi kirim `Z` suffix
+      // (treated as UTC), BUKAN konversi timezone asli user ke UTC (konsisten sama simplifikasi
+      // yg backend udah pakai duluan, bukan nambah lapisan konversi baru yg malah bisa geser
+      // tanggal kalau ada timezone offset).
+      await apiClient.post('/consumption/entries', {
+        mealType,
+        entryTimestamp: `${date}T${time}:00Z`,
+        items: savedItems.map((item) => ({ foodName: item.name, calories: parseInt(item.kcal, 10) || 0 })),
+      });
+      useDataRefreshStore.getState().bumpConsumption();
+      onSave(savedItems);
+      resetState();
+    } catch (err) {
+      const message = (err as { response?: { data?: { error?: string } } }).response?.data?.error;
+      showToast(message ?? 'Network error — please try again', 'error');
+      setShowSubmitConfirm(false);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!open) return null;
@@ -196,9 +264,9 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
 
             {suggestions.length > 0 && (
               <div className={styles.autocomplete}>
-                {suggestions.map((sug) => (
-                  <button key={sug.name} className={styles.autocompleteItem} onClick={() => handleSelectSuggestion(sug)}>
-                    {sug.name} · {sug.kcal} kcal
+                {suggestions.map((sug, i) => (
+                  <button key={`${sug.foodName}-${sug.calories}-${i}`} className={styles.autocompleteItem} onClick={() => handleSelectSuggestion(sug)}>
+                    {sug.foodName} · {sug.calories} kcal
                   </button>
                 ))}
               </div>
@@ -221,9 +289,9 @@ export function AddConsumptionModal({ open, onClose, onSave, initialDate }: AddC
         <div className={styles.quickAddSection}>
           <span className={styles.sectionLabel}>What you ate yesterday</span>
           <div className={styles.quickAddChips}>
-            {DUMMY_QUICK_ADD.map((chip) => (
-              <button key={chip.name} className={styles.chip} onClick={() => handleQuickAdd(chip)}>
-                {chip.name} · {chip.kcal}
+            {quickAddItems.map((chip, i) => (
+              <button key={`${chip.foodName}-${i}`} className={styles.chip} onClick={() => handleQuickAdd(chip)}>
+                {chip.foodName} · {chip.calories}
               </button>
             ))}
           </div>

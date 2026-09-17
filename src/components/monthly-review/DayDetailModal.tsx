@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Check, Snowflake, X } from 'lucide-react';
 import type { DayState } from '../../lib/dayState';
-import { getDummyDayDetail } from '../../lib/dummyData';
+import { apiClient } from '../../api/client';
 import { useUnitStore, formatWeight } from '../../lib/unitStore';
 import styles from './DayDetailModal.module.css';
 
@@ -9,6 +10,7 @@ interface DayDetailModalProps {
   day: number | null;
   state: DayState | null;
   dateLabel: string;
+  isoDate: string | null;
   onClose: () => void;
 }
 
@@ -46,11 +48,49 @@ const STATUS_COLOR: Record<DayState, string> = {
   upcoming: 'var(--color-text-secondary)',
 };
 
-export function DayDetailModal({ open, day, state, dateLabel, onClose }: DayDetailModalProps) {
-  const metricPreference = useUnitStore((s) => s.metricPreference);
-  if (!open || day === null || state === null) return null;
+interface LogDayResponse {
+  intake: number;
+  left: number;
+  entries: { foodName: string; calories: number }[];
+}
 
-  const detail = getDummyDayDetail(state);
+interface DayDetail {
+  intake: number | null;
+  limit: number;
+  deficit: number | null;
+  weight: number | null;
+  items: { name: string; kcal: number }[];
+}
+
+export function DayDetailModal({ open, day, state, dateLabel, isoDate, onClose }: DayDetailModalProps) {
+  const metricPreference = useUnitStore((s) => s.metricPreference);
+  const [detail, setDetail] = useState<DayDetail | null>(null);
+
+  useEffect(() => {
+    if (!open || isoDate === null || state === null) return;
+    setDetail(null);
+    // PRD: hari Upcoming gak punya data apa pun buat ditampilin (belum kejalani) — skip fetch,
+    // hindari query ke tanggal yg secara definisi belum ada datanya.
+    if (state === 'upcoming') return;
+    Promise.all([
+      apiClient.get<LogDayResponse>('/log/day', { params: { date: isoDate } }),
+      apiClient.get<{ weightValue: number }[]>('/weightlog', { params: { startDate: isoDate, endDate: isoDate } }),
+    ]).then(([dayRes, weightRes]) => {
+      const hasData = dayRes.data.entries.length > 0 || state === 'today';
+      const limit = dayRes.data.intake + dayRes.data.left;
+      setDetail({
+        intake: hasData ? dayRes.data.intake : null,
+        limit,
+        deficit: hasData ? dayRes.data.left : null,
+        weight: weightRes.data[0]?.weightValue ?? null,
+        items: dayRes.data.entries.map((e) => ({ name: e.foodName, kcal: e.calories })),
+      });
+    });
+  }, [open, isoDate, state]);
+
+  if (!open || day === null || state === null) return null;
+  if (!detail) return null;
+
   const hasData = detail.intake !== null;
   const StatusIcon = STATUS_ICON[state];
 

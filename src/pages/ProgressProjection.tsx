@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ComposedChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceDot, Brush } from 'recharts';
 
 // Recharts gak export tipe traveller-nya (TravellerProps internal) — didefinisiin ulang di sini
@@ -9,7 +9,10 @@ interface BrushTravellerProps {
   width: number;
   height: number;
 }
-import { getDummyProjection } from '../lib/dummyData';
+import { apiClient } from '../api/client';
+import { useDataRefreshStore } from '../lib/dataRefreshStore';
+import { computeProjection, type ProjectionResult } from '../lib/progressProjection';
+import { todayLocalIso } from '../lib/dateUtils';
 import { useUnitStore, formatWeight, kgToUnit } from '../lib/unitStore';
 import { pickLabelTicks } from '../lib/weightTicks';
 import { pickXAxisTier } from '../lib/projectionTicks';
@@ -19,6 +22,17 @@ import { RangeSlider } from '../components/projection/RangeSlider';
 import { ChartLegend } from '../components/log/ChartLegend';
 import logStyles from '../components/log/LogTabs.module.css';
 import styles from './ProgressProjection.module.css';
+
+interface WeightHistoryItem {
+  loggedDate: string;
+  weightValue: number;
+}
+
+interface ProfileForProjection {
+  goalWeight: number | null;
+  weightCurrent: number;
+  tdee: number;
+}
 
 // Berapa label yg ditampilin sekaligus di X-axis chart utama, per tier — grid Recharts categorical
 // gak auto-skip label overlap sendiri (beda dari axis numerik), jadi disaring manual via
@@ -60,7 +74,43 @@ function daysBetweenMs(a: number, b: number): number {
 }
 
 export function ProgressProjection() {
-  const data = useMemo(() => getDummyProjection(), []);
+  const [data, setData] = useState<ProjectionResult | null>(null);
+  const weightBumpedAt = useDataRefreshStore((s) => s.weightBumpedAt);
+
+  // Reality = SEMUA entry weightlog asli apa adanya (keputusan user 2026-09-17, gak difilter ke
+  // "checkpoint mingguan Jumat" — user bisa Log Weight kapan aja). Histori diambil rentang lebar
+  // (dari epoch app s/d hari ini) krn gak ada cara tau di FE tanggal entry PERTAMA tanpa fetch dulu.
+  // PRINSIP TEGAS: kalau weightlog KOSONG (belum pernah Log Weight sama sekali), fallback ke SATU
+  // titik hari ini dari Profile.weightCurrent (bukan proyeksi — itu titik NYATA, cuma sumbernya
+  // Profile bukan weightlog, PRD 4.6 "kalau belum ada log, pakai berat badan saat ini").
+  // `weightBumpedAt` (dataRefreshStore.ts) di dependency — modal Log Weight dipegang BottomNav
+  // (mount sekali di AppLayout), submit sukses gak bikin halaman ini unmount/remount.
+  useEffect(() => {
+    const wideStart = '2020-01-01';
+    const today = todayLocalIso();
+    Promise.all([
+      apiClient.get<WeightHistoryItem[]>('/weightlog', { params: { startDate: wideStart, endDate: today } }),
+      apiClient.get<ProfileForProjection>('/profile'),
+    ]).then(([weightRes, profileRes]) => {
+      const profile = profileRes.data;
+      const goalWeightKg = profile.goalWeight ?? profile.weightCurrent;
+      const history = [...weightRes.data].sort((a, b) => a.loggedDate.localeCompare(b.loggedDate));
+      const reality =
+        history.length > 0
+          ? history.map((h) => ({ date: new Date(`${h.loggedDate}T00:00:00`), weight: h.weightValue }))
+          : [{ date: new Date(`${today}T00:00:00`), weight: profile.weightCurrent }];
+      setData(computeProjection(reality, goalWeightKg, profile.tdee));
+    });
+  }, [weightBumpedAt]);
+
+  // Gate render di sini (bukan null-check di tiap useMemo) — data butuh 2 fetch (weightlog+profile)
+  // sebelum computeProjection bisa jalan, gak ada bentuk "empty ProjectionResult" yg valid buat
+  // dipakai sbg initial state (goalWeight/tdee harus dari Profile asli).
+  if (!data) return <div className={styles.page} />;
+  return <ProjectionChart data={data} />;
+}
+
+function ProjectionChart({ data }: { data: ProjectionResult }) {
   const metricPreference = useUnitStore((s) => s.metricPreference);
   const [page, setPage] = useState(0);
 
@@ -161,7 +211,7 @@ export function ProgressProjection() {
   const windowedChartData = chartData.slice(brushStartIndex, brushEndIndex + 1);
 
   // Tier X-axis SEKARANG dihitung dari WINDOW AKTIF (rentang tanggal yg lagi keliatan di slider),
-  // BUKAN dari total rentang proyeksi keseluruhan (`data.xAxisTier`, statis dari getDummyProjection).
+  // BUKAN dari total rentang proyeksi keseluruhan (statis, dari computeProjection sekali di awal).
   // Keputusan user eksplisit sesi 2026-09-11: makin di-zoom in (window dipersempit), makin detail
   // (year -> month -> week) — beda dari bacaan literal PRD 4.6 ("berdasarkan rentang total dari
   // hari 1 sampai estimasi Ideal capai Goal") tapi lebih match ekspektasi UX real (window kecil

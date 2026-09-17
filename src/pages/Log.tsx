@@ -3,7 +3,7 @@ import { DayTab } from '../components/log/DayTab';
 import { WeekTab } from '../components/log/WeekTab';
 import { MonthTab } from '../components/log/MonthTab';
 import { YearTab } from '../components/log/YearTab';
-import { getDummyDayLog, getDummyWeekLog, getDummyMonthLog, getDummyYearLog } from '../lib/dummyData';
+import { resolveDayPeriod, resolveWeekPeriod, formatWeekTitle, resolveMonthPeriod, formatMonthTitle, resolveYearPeriod } from '../lib/logPeriod';
 import styles from './Log.module.css';
 
 type LogTab = 'day' | 'week' | 'month' | 'year';
@@ -13,6 +13,21 @@ const TABS: { key: LogTab; label: string }[] = [
   { key: 'month', label: 'Month' },
   { key: 'year', label: 'Year' },
 ];
+
+// Label periode (title bar + picker "Jump to period") dihitung PURE dari offset — TIDAK fetch
+// data konsumsi apa pun (beda dari versi dummy lama yg manggil getDummyXLog buat 2 tujuan
+// sekaligus: render tab aktif DAN generate label). Migrasi API: kalau label ikut fetch data,
+// picker dgn puluhan opsi (Day: 30 hari) bakal manggil puluhan API call sekaligus — dipisah biar
+// tiap tab component fetch data sendiri CUMA buat periode yg lagi aktif ditampilkan.
+function formatDayLabel(dayOffset: number): string {
+  const { date } = resolveDayPeriod(dayOffset);
+  const weekdayMonthDay = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return `${weekdayMonthDay} ${date.getFullYear()}`;
+}
+
+function formatYearLabel(yearOffset: number): string {
+  return String(resolveYearPeriod(yearOffset));
+}
 
 export function Log() {
   const [tab, setTab] = useState<LogTab>('day');
@@ -28,12 +43,12 @@ export function Log() {
 
   const periodLabel =
     tab === 'day'
-      ? getDummyDayLog(dayOffset).dateLabel
+      ? formatDayLabel(dayOffset)
       : tab === 'week'
-        ? getDummyWeekLog(weekOffset).title
+        ? formatWeekTitle(resolveWeekPeriod(weekOffset))
         : tab === 'month'
-          ? getDummyMonthLog(monthOffset).title
-          : getDummyYearLog(yearOffset).title;
+          ? formatMonthTitle(resolveMonthPeriod(monthOffset))
+          : formatYearLabel(yearOffset);
 
   // Jumlah opsi picker beda per satuan waktu — skala wajar tiap tab (bukan 6 generik semua tab).
   const PICKER_RANGE: Record<LogTab, number> = { day: 30, week: 12, month: 12, year: 5 };
@@ -41,12 +56,12 @@ export function Log() {
     offset: o,
     label:
       tab === 'day'
-        ? getDummyDayLog(o).dateLabel
+        ? formatDayLabel(o)
         : tab === 'week'
-          ? getDummyWeekLog(o).title
+          ? formatWeekTitle(resolveWeekPeriod(o))
           : tab === 'month'
-            ? getDummyMonthLog(o).title
-            : getDummyYearLog(o).title,
+            ? formatMonthTitle(resolveMonthPeriod(o))
+            : formatYearLabel(o),
   }));
 
   // Drill-down Week → Day: pindah tab, bukan buka modal (simetris dgn drill-down Year→Month, Month→Week).
