@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { useAuthStore } from '../../lib/authStore';
 import { useToastStore } from '../../lib/toastStore';
+import { resolveAuthDestination } from '../../lib/resolveAuthDestination';
 import styles from './Auth.module.css';
 
 // PRD 4.0: error kredensial pakai pesan GENERIK ("Email atau password salah") — gak bedain email
@@ -24,13 +25,14 @@ export function Login() {
     try {
       const res = await apiClient.post('/auth/login', { email, password });
       setTokens(res.data.accessToken, res.data.refreshToken);
-      // KOREKSI 2026-09-16: sebelumnya hardcode langsung navigate('/homepage') di sini — SALAH,
-      // ketauan pas testing manual (Profile akun test 404 tapi tetap "berhasil" masuk Homepage
-      // krn Homepage-nya sendiri masih dummy data, gak pernah manggil API buat kepergok gagalnya).
-      // Fix: lempar ke /splash, biar auth-check di sana (New User->Onboarding, Post-Wipe->
-      // WelcomeBack, Existing->Homepage) yg nentuin tujuan sebenarnya — 1 sumber logic routing,
-      // jangan duplikasi keputusan New/Existing/Post-Wipe di 2 tempat (Login DAN Splash).
-      navigate('/splash');
+      // Splash cuma buat cold-start app — Login sukses langsung ke tujuan asli (New User/Post-Wipe/
+      // Existing) via fungsi shared yg sama dipakai Splash, TANPA numpang render Splash lagi.
+      const destination = await resolveAuthDestination();
+      if (destination.route === 'network-error') {
+        showToast('Network error — please try again', 'error');
+        return;
+      }
+      navigate(destination.route);
     } catch (err) {
       const status = (err as { response?: { status?: number } }).response?.status;
       if (status === 401) {
@@ -69,7 +71,7 @@ export function Login() {
               autoComplete="current-password"
             />
             <button type="button" className={styles.eyeButton} onClick={() => setPasswordVisible((v) => !v)} aria-label="Toggle password visibility">
-              {passwordVisible ? <EyeOff size={17} strokeWidth={2} color="var(--color-text-secondary)" /> : <Eye size={17} strokeWidth={2} color="var(--color-text-secondary)" />}
+              {passwordVisible ? <Eye size={17} strokeWidth={2} color="var(--color-text-secondary)" /> : <EyeOff size={17} strokeWidth={2} color="var(--color-text-secondary)" />}
             </button>
           </div>
         </label>

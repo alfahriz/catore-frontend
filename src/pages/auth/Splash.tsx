@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../../api/client';
 import { useAuthStore } from '../../lib/authStore';
-import styles from './Auth.module.css';
+import { resolveAuthDestination } from '../../lib/resolveAuthDestination';
+import styles from './Splash.module.css';
 
-const LAST_SEEN_WIPE_KEY = 'catore-last-seen-wipe';
+// Splash cuma dipakai cold-start app (root) — Login.tsx punya jalur sendiri ke resolveAuthDestination
+// TANPA lewat sini, biar gak numpang delay branding screen ini abis submit form.
+const MIN_DISPLAY_MS = 3000;
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-// PRD 4.0 Splash: auth-check ganti tergantung hasil:
-// - Token invalid/expired (401) -> Login.
-// - Network timeout/no connection (BUKAN 401) -> state error "Can't connect" + Retry, JANGAN
-//   lempar ke Login (bisa menyesatkan, seolah sesi habis padahal cuma jaringan).
-// - Token valid, Profile belum ada (404) -> New User -> Onboarding step 1.
-// - Token valid, Profile ada, LastWipeOn > localStorage "terakhir dilihat" -> Post-Wipe User ->
-//   WelcomeBack (localStorage dipakai krn BE gak expose flag "wipe ini sudah ditampilkan
-//   Welcome-Back-nya belum" — begitu WelcomeBack ditampilkan, timestamp itu disimpan biar gak
-//   muncul berulang tiap buka app selanjutnya).
-// - Token valid, Profile ada, gak ada wipe baru -> Existing User -> Homepage.
 type SplashState = 'loading' | 'error';
 
 export function Splash() {
@@ -25,37 +20,20 @@ export function Splash() {
 
   const runAuthCheck = async () => {
     setState('loading');
+    const minDisplay = delay(MIN_DISPLAY_MS);
 
     if (!accessToken) {
+      await minDisplay;
       navigate('/login');
       return;
     }
 
-    try {
-      const res = await apiClient.get('/profile');
-      const lastWipeOn: string | null = res.data.lastWipeOn ?? null;
-      const lastSeenWipe = localStorage.getItem(LAST_SEEN_WIPE_KEY);
-
-      if (lastWipeOn && lastWipeOn !== lastSeenWipe) {
-        localStorage.setItem(LAST_SEEN_WIPE_KEY, lastWipeOn);
-        navigate('/welcome-back');
-        return;
-      }
-
-      navigate('/homepage');
-    } catch (err) {
-      const status = (err as { response?: { status?: number } }).response?.status;
-      if (status === 404) {
-        navigate('/onboarding');
-        return;
-      }
-      if (status === 401) {
-        navigate('/login');
-        return;
-      }
-      // Network timeout/no response — bukan token invalid, jangan lempar Login.
+    const [destination] = await Promise.all([resolveAuthDestination(), minDisplay]);
+    if (destination.route === 'network-error') {
       setState('error');
+      return;
     }
+    navigate(destination.route);
   };
 
   useEffect(() => {
@@ -64,8 +42,8 @@ export function Splash() {
   }, []);
 
   return (
-    <div className={styles.authPage}>
-      <h1 className={styles.title}>Catore</h1>
+    <div className={styles.page}>
+      <h1 className={styles.logo}>Catore</h1>
       {state === 'error' && (
         <>
           <p className={styles.hint}>Can't connect — check your internet.</p>

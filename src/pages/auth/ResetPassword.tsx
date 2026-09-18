@@ -16,12 +16,12 @@ export function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const canSubmit = token !== null && newPassword.length >= 6 && newPassword === confirmPassword;
+  const canSubmit = token !== null && newPassword.length >= 6 && newPassword.length <= 12 && newPassword === confirmPassword;
 
   const handleSubmit = async () => {
     if (loading || !canSubmit) return;
-    if (newPassword.length < 6) {
-      showToast('Password must be at least 6 characters', 'error');
+    if (newPassword.length < 6 || newPassword.length > 12) {
+      showToast('Password must be 6–12 characters', 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -64,6 +64,7 @@ export function ResetPassword() {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             autoComplete="new-password"
+            maxLength={12}
           />
         </label>
         <label className={styles.field}>
@@ -74,6 +75,7 @@ export function ResetPassword() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
+            maxLength={12}
           />
         </label>
       </div>

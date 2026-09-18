@@ -11,7 +11,8 @@ import styles from './Auth.module.css';
 // BE yang jadi acuan, bukan PRD di titik ini. Jadi alur SEKARANG: signup sukses -> halaman "check
 // your email" (BUKAN langsung Onboarding) -> user klik link verifikasi (deep link/web fallback,
 // lihat route /verify-email) -> baru bisa Login -> lanjut Onboarding dari situ.
-// Password min 6 karakter, divalidasi jg di sini biar user dapat feedback instan (BE tetap validasi ulang).
+// Password 6-12 karakter (bebas huruf besar/kecil), divalidasi jg di sini biar user dapat feedback
+// instan (BE tetap validasi ulang) — aturan sama persis dipakai Change Password & Reset Password.
 // Halaman "check your email" pasca-signup sukses — bukan komponen terpisah/route sendiri (state
 // lokal SignUp, ganti tampilan in-place) krn cuma relevan sbg hasil langsung dari submit form ini.
 function CheckEmailNotice({ email }: { email: string }) {
@@ -59,7 +60,8 @@ function CheckEmailNotice({ email }: { email: string }) {
 // BE yang jadi acuan, bukan PRD di titik ini. Jadi alur SEKARANG: signup sukses -> halaman "check
 // your email" (BUKAN langsung Onboarding) -> user klik link verifikasi (deep link/web fallback,
 // lihat route /verify-email) -> baru bisa Login -> lanjut Onboarding dari situ.
-// Password min 6 karakter, divalidasi jg di sini biar user dapat feedback instan (BE tetap validasi ulang).
+// Password 6-12 karakter (bebas huruf besar/kecil), divalidasi jg di sini biar user dapat feedback
+// instan (BE tetap validasi ulang) — aturan sama persis dipakai Change Password & Reset Password.
 export function SignUp() {
   const showToast = useToastStore((s) => s.showToast);
   const [email, setEmail] = useState('');
@@ -69,12 +71,12 @@ export function SignUp() {
   const [loading, setLoading] = useState(false);
   const [signedUpEmail, setSignedUpEmail] = useState<string | null>(null);
 
-  const canSubmit = email.trim() !== '' && password.length >= 6 && password === confirmPassword;
+  const canSubmit = email.trim() !== '' && password.length >= 6 && password.length <= 12 && password === confirmPassword;
 
   const handleSignUp = async () => {
     if (loading) return;
-    if (password.length < 6) {
-      showToast('Password must be at least 6 characters', 'error');
+    if (password.length < 6 || password.length > 12) {
+      showToast('Password must be 6–12 characters', 'error');
       return;
     }
     if (password !== confirmPassword) {
@@ -121,9 +123,10 @@ export function SignUp() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
+              maxLength={12}
             />
             <button type="button" className={styles.eyeButton} onClick={() => setPasswordVisible((v) => !v)} aria-label="Toggle password visibility">
-              {passwordVisible ? <EyeOff size={17} strokeWidth={2} color="var(--color-text-secondary)" /> : <Eye size={17} strokeWidth={2} color="var(--color-text-secondary)" />}
+              {passwordVisible ? <Eye size={17} strokeWidth={2} color="var(--color-text-secondary)" /> : <EyeOff size={17} strokeWidth={2} color="var(--color-text-secondary)" />}
             </button>
           </div>
         </label>
@@ -135,6 +138,7 @@ export function SignUp() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
+            maxLength={12}
           />
         </label>
       </div>

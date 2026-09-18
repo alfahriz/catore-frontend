@@ -99,7 +99,7 @@ export function Homepage() {
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [updatingRecord, setUpdatingRecord] = useState(false);
 
-  const loadAll = () => {
+  const loadAll = (cancelled: { current: boolean }) => {
     const today = todayLocalIso();
     const now = new Date();
     const year = now.getFullYear();
@@ -120,6 +120,7 @@ export function Homepage() {
     apiClient
       .get(`/consumption/daily-record/${today}`)
       .then((recordRes) => {
+        if (cancelled.current) return null;
         setDailyRecord(recordRes.data);
         return Promise.all([
           apiClient.get('/profile'),
@@ -129,7 +130,9 @@ export function Homepage() {
           apiClient.get('/streak/missing-dates'),
         ]);
       })
-      .then(([profileRes, weightRes, weekRes, dayRes, missingRes]) => {
+      .then((results) => {
+        if (cancelled.current || !results) return;
+        const [profileRes, weightRes, weekRes, dayRes, missingRes] = results;
         setCategoryLimits(profileRes.data.categoryLimits);
 
         const history: WeightHistoryItem[] = weightRes.data;
@@ -150,9 +153,18 @@ export function Homepage() {
         setMissingDates(missingRes.data);
       })
       .catch(() => {
+        // Request masih bisa reject SETELAH komponen unmount (mis. forced-logout krn token
+        // expired mid-fetch, ProtectedRoute langsung lempar ke /splash) — promise chain yg
+        // udah kepalang jalan tetap nyampe .catch(), tapi cancelled=true krn cleanup effect
+        // udah kepanggil duluan. Guard ini nyegah toast nyasar nongol di halaman yg udah gak
+        // aktif (BUG ke-15: 2 toast identik muncul barengan React StrictMode dev double-invoke
+        // + token expired, ketauan 2026-09-18).
+        if (cancelled.current) return;
         showToast('Failed to load homepage data', 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled.current) setLoading(false);
+      });
   };
 
   // BottomNav (AppLayout, mount sekali di root) yg pegang modal Add Consumption/Log Weight —
@@ -160,7 +172,11 @@ export function Homepage() {
   // jadi mount-once biasa gak akan pernah lihat entry baru. `consumptionBumpedAt`/`weightBumpedAt`
   // dari dataRefreshStore di-bump abis submit sukses di modal manapun, retrigger loadAll di sini.
   useEffect(() => {
-    loadAll();
+    const cancelled = { current: false };
+    loadAll(cancelled);
+    return () => {
+      cancelled.current = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [consumptionBumpedAt, weightBumpedAt]);
 

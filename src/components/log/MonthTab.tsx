@@ -129,13 +129,23 @@ export function MonthTab({ monthOffset, onSelectWeek }: MonthTabProps) {
   // Lihat catatan dataRefreshStore.ts — modal Add Consumption/Log Weight gak bikin tab ini
   // unmount, submit sukses cuma bump counter, ditaruh di dependency biar re-fetch.
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     const period = resolveMonthPeriod(monthOffset);
     apiClient
       .get<LogMonthResponse>('/log/month', { params: { year: period.year, month: period.month } })
-      .then((res) => setData(res.data))
-      .catch(() => showToast('Failed to load month log', 'error'))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        if (!cancelled) setData(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) showToast('Failed to load month log', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset, consumptionBumpedAt, weightBumpedAt]);
 

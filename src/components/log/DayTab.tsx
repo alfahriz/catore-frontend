@@ -42,13 +42,25 @@ export function DayTab({ dayOffset }: DayTabProps) {
   // submit sukses gak bikin tab ini unmount/remount, jadi butuh `consumptionBumpedAt` di dependency
   // biar re-fetch (lihat dataRefreshStore.ts).
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     const { isoDate } = resolveDayPeriod(dayOffset);
     apiClient
       .get<LogDayResponse>('/log/day', { params: { date: isoDate } })
-      .then((res) => setData(res.data))
-      .catch(() => showToast('Failed to load day log', 'error'))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        if (!cancelled) setData(res.data);
+      })
+      .catch(() => {
+        // Guard cancelled — request bisa reject SETELAH unmount (mis. token expired ->
+        // forced-logout), tanpa ini toast bisa nyasar muncul dari tab yg udah gak aktif.
+        if (!cancelled) showToast('Failed to load day log', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayOffset, consumptionBumpedAt]);
 

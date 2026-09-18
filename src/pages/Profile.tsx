@@ -131,9 +131,11 @@ export function Profile() {
   const originalAge = useRef('');
 
   useEffect(() => {
+    let cancelled = false;
     apiClient
       .get<ProfileApiResponse>('/profile')
       .then((res) => {
+        if (cancelled) return;
         const p = res.data;
         setNickname(p.displayName);
         setGender(p.gender);
@@ -157,9 +159,14 @@ export function Profile() {
         // .then() ini masih nilai LAMA dari render sebelum fetch, bukan yg baru di-set barusan).
       })
       .catch(() => {
-        showToast('Failed to load profile', 'error');
+        if (!cancelled) showToast('Failed to load profile', 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -493,7 +500,10 @@ export function Profile() {
       <ChangePasswordModal
         open={passwordModalOpen}
         onClose={() => setPasswordModalOpen(false)}
-        onSave={() => setPasswordModalOpen(false)}
+        onSave={() => {
+          setPasswordModalOpen(false);
+          navigate('/login');
+        }}
       />
 
       <ActivityAssessmentModal

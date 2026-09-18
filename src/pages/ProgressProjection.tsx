@@ -86,12 +86,14 @@ export function ProgressProjection() {
   // `weightBumpedAt` (dataRefreshStore.ts) di dependency — modal Log Weight dipegang BottomNav
   // (mount sekali di AppLayout), submit sukses gak bikin halaman ini unmount/remount.
   useEffect(() => {
+    let cancelled = false;
     const wideStart = '2020-01-01';
     const today = todayLocalIso();
     Promise.all([
       apiClient.get<WeightHistoryItem[]>('/weightlog', { params: { startDate: wideStart, endDate: today } }),
       apiClient.get<ProfileForProjection>('/profile'),
     ]).then(([weightRes, profileRes]) => {
+      if (cancelled) return;
       const profile = profileRes.data;
       const goalWeightKg = profile.goalWeight ?? profile.weightCurrent;
       const history = [...weightRes.data].sort((a, b) => a.loggedDate.localeCompare(b.loggedDate));
@@ -101,6 +103,9 @@ export function ProgressProjection() {
           : [{ date: new Date(`${today}T00:00:00`), weight: profile.weightCurrent }];
       setData(computeProjection(reality, goalWeightKg, profile.tdee));
     });
+    return () => {
+      cancelled = true;
+    };
   }, [weightBumpedAt]);
 
   // Gate render di sini (bukan null-check di tiap useMemo) — data butuh 2 fetch (weightlog+profile)

@@ -63,7 +63,7 @@ export function BackfillDetail() {
   const [cards, setCards] = useState<BackfillCard[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadCards = () => {
+  const loadCards = (cancelled: { current: boolean }) => {
     const today = todayLocalIso();
     Promise.all([
       apiClient.get<MissingDateApi[]>('/streak/missing-dates'),
@@ -71,6 +71,7 @@ export function BackfillDetail() {
       apiClient.get<{ intakeSum: number }>(`/consumption/daily-record/${today}`),
     ])
       .then(([missingRes, frozenRes, todayRecordRes]) => {
+        if (cancelled.current) return;
         const missingDates = missingRes.data;
         const frozenDays = frozenRes.data;
         const todayIsMissing = missingDates.some((m) => m.date === today);
@@ -108,13 +109,19 @@ export function BackfillDetail() {
         setCards([...missingCards, ...todayCard, ...frozenCards]);
       })
       .catch(() => {
-        showToast('Failed to load backfill data', 'error');
+        if (!cancelled.current) showToast('Failed to load backfill data', 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled.current) setLoading(false);
+      });
   };
 
   useEffect(() => {
-    loadCards();
+    const cancelled = { current: false };
+    loadCards(cancelled);
+    return () => {
+      cancelled.current = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -153,7 +160,7 @@ export function BackfillDetail() {
         onClose={() => setPresetDate(null)}
         onSave={() => {
           setPresetDate(null);
-          loadCards();
+          loadCards({ current: false });
         }}
         initialDate={presetDate ?? undefined}
       />

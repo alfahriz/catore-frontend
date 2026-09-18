@@ -99,13 +99,23 @@ export function WeekTab({ weekOffset, onSelectDay }: WeekTabProps) {
   // Lihat catatan dataRefreshStore.ts — modal Add Consumption gak bikin tab ini unmount, submit
   // sukses cuma bump `consumptionBumpedAt`, ditaruh di dependency biar re-fetch.
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     const period = resolveWeekPeriod(weekOffset);
     apiClient
       .get<LogWeekResponse>('/log/week', { params: { year: period.year, month: period.month, weekNumber: period.weekNumber } })
-      .then((res) => setData(res.data))
-      .catch(() => showToast('Failed to load week log', 'error'))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        if (!cancelled) setData(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) showToast('Failed to load week log', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekOffset, consumptionBumpedAt]);
 

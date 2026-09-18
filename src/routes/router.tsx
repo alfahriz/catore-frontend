@@ -22,10 +22,12 @@ export const router = createBrowserRouter([
     path: '/',
     element: <Navigate to="/splash" replace />,
   },
+  // Splash standalone (bukan child AuthLayout) — dia sendiri sudah full-screen branding (logo di
+  // tengah), bukan form, jadi gak butuh (dan gak boleh dobel sama) header logo-bar AuthLayout.
+  { path: '/splash', element: <Splash /> },
   {
     element: <AuthLayout />,
     children: [
-      { path: '/splash', element: <Splash /> },
       { path: '/login', element: <Login /> },
       { path: '/signup', element: <SignUp /> },
       { path: '/forgot-password', element: <ForgotPassword /> },

@@ -96,6 +96,7 @@ export function MonthlyReview() {
   // Lihat catatan dataRefreshStore.ts — modal Add Consumption/Log Weight gak bikin halaman ini
   // unmount, submit sukses cuma bump counter, ditaruh di dependency biar re-fetch.
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     const weekCount = getWeekCountInMonth(year, month);
     Promise.all([
@@ -106,12 +107,20 @@ export function MonthlyReview() {
       ),
     ])
       .then(([monthRes, profileRes, ...weekResponses]) => {
+        if (cancelled) return;
         setMonthResponse(monthRes.data);
         setGoalWeightKg(profileRes.data.goalWeight ?? 0);
         setDayBars(weekResponses.flatMap((r) => r.data.dailyBars));
       })
-      .catch(() => showToast('Failed to load monthly review', 'error'))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!cancelled) showToast('Failed to load monthly review', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset, consumptionBumpedAt, weightBumpedAt]);
 

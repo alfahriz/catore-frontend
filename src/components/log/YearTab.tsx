@@ -121,12 +121,22 @@ export function YearTab({ yearOffset, onSelectMonth }: YearTabProps) {
   // Lihat catatan dataRefreshStore.ts — modal Add Consumption/Log Weight gak bikin tab ini
   // unmount, submit sukses cuma bump counter, ditaruh di dependency biar re-fetch.
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     apiClient
       .get<LogYearResponse>('/log/year', { params: { year } })
-      .then((res) => setData(res.data))
-      .catch(() => showToast('Failed to load year log', 'error'))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        if (!cancelled) setData(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) showToast('Failed to load year log', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yearOffset, consumptionBumpedAt, weightBumpedAt]);
 
