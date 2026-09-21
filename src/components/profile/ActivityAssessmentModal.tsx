@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { mapActivityAssessment, EXERCISE_DAY_OPTIONS } from '../../lib/activityAssessment';
+import { EXERCISE_DAY_OPTIONS } from '../../lib/activityAssessment';
 import styles from './ActivityAssessmentModal.module.css';
 
 interface ActivityAssessmentModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (activityLevel: string) => void;
+  // Kirim jawaban MENTAH (bukan hasil map lokal) — caller (Profile.tsx) yg persist ke
+  // `POST /profile/activity-assessment`, biar backend jadi 1 sumber kebenaran mapping
+  // jawaban->level (sama pola Onboarding step 2), bukan dihitung ulang di FE lalu dibuang gitu aja.
+  onSubmit: (workEnvironment: 'indoor' | 'outdoor', exerciseDays: number) => void;
 }
 
 export function ActivityAssessmentModal({ open, onClose, onSubmit }: ActivityAssessmentModalProps) {
@@ -18,7 +21,7 @@ export function ActivityAssessmentModal({ open, onClose, onSubmit }: ActivityAss
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSubmit(mapActivityAssessment(workEnvironment, exerciseDays));
+    onSubmit(workEnvironment, exerciseDays);
     setWorkEnvironment(null);
     setExerciseDays(null);
   };

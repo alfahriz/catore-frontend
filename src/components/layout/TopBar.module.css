@@ -35,8 +35,8 @@
   height: 32px;
   border-radius: var(--radius-round);
   border: none;
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
+  background: linear-gradient(135deg, oklch(93% 0.05 190) 0%, oklch(98% 0.01 190) 100%);
+  color: var(--color-text-primary);
   font-weight: 600;
   cursor: pointer;
 }

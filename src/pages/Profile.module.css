@@ -18,8 +18,8 @@
   width: 96px;
   height: 96px;
   border-radius: var(--radius-round);
-  background: oklch(93% 0.02 220 / 0.5);
-  box-shadow: 0 0 0 5px oklch(55% 0.09 190 / 0.14), var(--shadow-card);
+  background: linear-gradient(135deg, oklch(93% 0.05 190) 0%, oklch(98% 0.01 190) 100%);
+  box-shadow: var(--shadow-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -34,10 +34,10 @@
   font-size: 19px;
   font-weight: 800;
   color: var(--color-text-primary);
-  border: none;
+  border: 1.5px solid var(--color-border);
   padding: 10px 20px;
-  border-radius: var(--radius-round);
-  background: none;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   width: 180px;
   box-sizing: border-box;
 }
@@ -333,7 +333,7 @@
   font-weight: 700;
 }
 
-.numberSub {
+.numberSubtext {
   font-size: 10.5px;
   color: var(--color-text-secondary);
 }
@@ -385,7 +385,10 @@
 }
 
 .changePasswordButton {
+  display: block;
   margin-top: 20px;
+  margin-left: auto;
+  width: fit-content;
   border: none;
   background: none;
   cursor: pointer;

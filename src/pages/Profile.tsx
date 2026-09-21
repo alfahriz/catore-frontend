@@ -191,9 +191,16 @@ export function Profile() {
     kcal: Math.round(tdee + CATEGORY_OFFSETS[label]),
   }));
 
-  // Suggested goal = BMI 22 (titik tengah rentang sehat) dari height saat ini — ikut berubah live
-  // kalau height diedit, TAPI cuma di-apply ke goalWeightKg kalau belum pernah di-override manual.
+  // Suggested goal = BMI 22 (titik paling sehat secara epidemiologis di dalam rentang normal,
+  // BUKAN cuma titik tengah matematis 18.5-24.9) dari height saat ini — dipakai KONSISTEN di 2
+  // tempat: goal weight suggestion (di bawah) DAN subtext "Ideal" di card BMI, biar user liat 1
+  // angka target yang sama, gak 2 rentang beda logic (keputusan user 2026-09-21, sebelumnya
+  // sempat pakai rentang 18.5-24.9 WHO buat subtext BMI, diganti balik ke BMI 22 tunggal).
   const suggestedGoalKg = Math.round(idealWeightBmi22(heightCm) * 10) / 10;
+  // TDEE-ideal = TDEE dihitung ulang pakai berat BMI 22 (bukan berat aktual) — height/age/gender/
+  // activityLevel tetap sama, cuma weight-nya diganti suggestedGoalKg. Info tambahan "kalau berat
+  // ideal, kebutuhan kalori harianmu segini" (diminta user 2026-09-21).
+  const tdeeAtIdealWeight = Math.round(calculateTdee(suggestedGoalKg, heightCm, ageNum, gender, activityLevel));
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -229,15 +236,21 @@ export function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, metricPreference]);
 
-  const handleHeightChange = (value: string) => {
+  // Height/Weight cuma boleh angka+titik+petik-dua (`"`) — petik-dua buat notasi inch (mis.
+  // `68"`), bukan bagian numerik, jadi di-strip sebelum di-parse ke Number.
+  const sanitizeMeasurement = (value: string) => value.replace(/[^0-9."]/g, '');
+
+  const handleHeightChange = (rawValue: string) => {
+    const value = sanitizeMeasurement(rawValue);
     setHeightDraft(value);
-    const num = Number(value);
+    const num = Number(value.replace(/"/g, ''));
     if (value.trim() !== '' && !Number.isNaN(num)) setHeightCm(heightToCm(num, metricPreference));
   };
 
-  const handleWeightChange = (value: string) => {
+  const handleWeightChange = (rawValue: string) => {
+    const value = sanitizeMeasurement(rawValue);
     setWeightDraft(value);
-    const num = Number(value);
+    const num = Number(value.replace(/"/g, ''));
     if (value.trim() !== '' && !Number.isNaN(num)) setWeightKg(metricPreference === 'lb' ? num / LB_PER_KG : num);
   };
 
@@ -294,7 +307,13 @@ export function Profile() {
         age: Number(age),
         gender,
         displayName: nickname,
-        goalWeight: goalWeightKg,
+        // Kirim goalWeight HANYA kalau user beneran pernah override manual (isGoalManual) — BUG
+        // sebelumnya: field ini SELALU dikirim (walau user cuma ganti nickname), bikin backend
+        // (ProfileAccountService.UpdateProfile) set IsRecomendGoalUsed=false PERMANEN begitu field
+        // terisi apa pun nilainya, jadi fitur auto-recalculate goal weight ikut height (PRD 4.1) mati
+        // total abis Save pertama kali. `undefined` di sini artinya field gak ikut ke JSON body sama
+        // sekali (bukan dikirim `null`), sama-sama bikin backend `request.GoalWeight.HasValue=false`.
+        goalWeight: isGoalManual ? goalWeightKg : undefined,
         metricPreference: metricPreference === 'lb' ? 'Pound' : 'Kilogram',
         timezone,
       });
@@ -458,9 +477,13 @@ export function Profile() {
           <div className={styles.numbersCol}>
             <div className={styles.numberLabelRow}>
               <span className={styles.numberLabel}>BMI</span>
-              <span className={styles.numberSub}>{bmiCategory}</span>
             </div>
-            <div className={styles.numberValue}>{bmi}</div>
+            <div className={styles.numberValue}>
+              {bmi} <span className={styles.numberUnit}>{bmiCategory}</span>
+            </div>
+            <span className={styles.numberSubtext}>
+              Ideal {formatWeightNumber(suggestedGoalKg, metricPreference)} {metricPreference} (BMI 22)
+            </span>
           </div>
           <div className={styles.numbersDivider} />
           <div className={styles.numbersCol}>
@@ -470,6 +493,9 @@ export function Profile() {
             <div className={styles.numberValue}>
               {tdee} <span className={styles.numberUnit}>kcal</span>
             </div>
+            <span className={styles.numberSubtext}>
+              At ideal weight: {tdeeAtIdealWeight} kcal
+            </span>
           </div>
         </div>
       </div>
@@ -509,10 +535,19 @@ export function Profile() {
       <ActivityAssessmentModal
         open={assessmentModalOpen}
         onClose={() => setAssessmentModalOpen(false)}
-        onSubmit={(level) => {
-          setActivityLevel(level);
-          setHasActivityAssessment(true);
-          setAssessmentModalOpen(false);
+        onSubmit={async (workEnvironment, exerciseDays) => {
+          try {
+            const res = await apiClient.post('/profile/activity-assessment', {
+              workEnvironment,
+              exerciseFrequency: String(exerciseDays),
+            });
+            setActivityLevel(res.data.activityLevel);
+            setHasActivityAssessment(true);
+            setAssessmentModalOpen(false);
+            showToast('Activity level updated', 'success');
+          } catch {
+            showToast('Failed to save activity level — please try again', 'error');
+          }
         }}
       />
 
