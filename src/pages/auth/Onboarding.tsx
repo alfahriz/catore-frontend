@@ -103,7 +103,7 @@ export function Onboarding() {
       // biar row ke-create, baru PATCH update kategori/PA-nya.
       await apiClient.get(`/consumption/daily-record/${today}`);
       await apiClient.patch(`/consumption/daily-record/${today}`, {
-        deficitCategory,
+        calorieCategory: deficitCategory,
         paToday,
       });
       navigate('/homepage');

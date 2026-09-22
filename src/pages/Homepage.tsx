@@ -23,7 +23,7 @@ interface CategoryLimits {
 // DailyRecordDto (Consumption module).
 interface DailyRecordResponse {
   recordDate: string;
-  deficitCategory: string;
+  calorieCategory: string;
   paToday: boolean;
   effectiveTdee: number;
   effectiveLimit: number;
@@ -180,7 +180,7 @@ export function Homepage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [consumptionBumpedAt, weightBumpedAt]);
 
-  const handleUpdateRecord = async (changes: { deficitCategory?: string; paToday?: boolean }) => {
+  const handleUpdateRecord = async (changes: { calorieCategory?: string; paToday?: boolean }) => {
     if (updatingRecord) return;
     setUpdatingRecord(true);
     try {
@@ -260,7 +260,7 @@ export function Homepage() {
 
       <div className={styles.categoryRow}>
         <button className={styles.categoryButton} onClick={() => setCategorySheetOpen(true)}>
-          {dailyRecord.deficitCategory} · {Math.round(limit).toLocaleString('en-US')} kcal ▾
+          {dailyRecord.calorieCategory} · {Math.round(limit).toLocaleString('en-US')} kcal ▾
         </button>
       </div>
 
@@ -326,12 +326,12 @@ export function Homepage() {
 
       <CategorySheet
         open={categorySheetOpen}
-        activeLabel={dailyRecord.deficitCategory}
+        activeLabel={dailyRecord.calorieCategory}
         categoryLimits={categoryLimits}
         onClose={() => setCategorySheetOpen(false)}
         onSelect={(label) => {
           setCategorySheetOpen(false);
-          handleUpdateRecord({ deficitCategory: label });
+          handleUpdateRecord({ calorieCategory: label });
         }}
       />
     </div>
